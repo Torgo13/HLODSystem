@@ -11,7 +11,11 @@ namespace Unity.HLODSystem.Utils
             Vector3 max = bounds.max;
             Matrix4x4 matrix = transform.worldToLocalMatrix;
 
+#if OPTIMISATION
+            System.Span<Vector3> points = stackalloc []
+#else
             Vector3[] points = new[]
+#endif // OPTIMISATION
             {
                 new Vector3(min.x, min.y, min.z),
                 new Vector3(max.x, min.y, min.z),

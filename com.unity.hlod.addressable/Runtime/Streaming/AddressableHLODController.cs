@@ -13,6 +13,9 @@ namespace Unity.HLODSystem.Streaming
     {
         public interface ICustomLoader
         {
+#if UNITY_6000_3_OR_NEWER
+            public void CustomLoad(string key, Awaitable loadDoneAction);
+#endif // UNITY_6000_3_OR_NEWER
             public void CustomLoad(string key, Action<GameObject> loadDoneAction);
             public void CustomUnload(string key);
         }
@@ -39,7 +42,24 @@ namespace Unity.HLODSystem.Streaming
             public string Key;
             public bool LoadFromCustom;
             public AsyncOperationHandle<GameObject> Handle;
+#if UNITY_6000_3_OR_NEWER
+            private GameObject _instance;
+            public GameObject Instance
+            {
+                get
+                {
+                    if (_instance == null && Handle.IsValid() && Handle.IsDone)
+                    {
+                        _instance = Handle.Result;
+                    }
+
+                    return _instance;
+                }
+                set => _instance = value;
+            }
+#else
             public GameObject Instance;
+#endif // UNITY_6000_3_OR_NEWER
         }
 
         private Dictionary<int, LoadInfo> m_highObjectLoadInfos = new Dictionary<int, LoadInfo>();
@@ -219,6 +239,11 @@ namespace Unity.HLODSystem.Streaming
 
         private void DestoryObject(Object obj)
         {
+#if SAFETY
+            if (obj == null)
+                return;
+#endif // SAFETY
+
 #if UNITY_EDITOR
             DestroyImmediate(obj);
 #else
@@ -251,6 +276,11 @@ namespace Unity.HLODSystem.Streaming
             {
                 loadInfo.LoadFromCustom = false;
                 loadInfo.Handle = Addressables.LoadAssetAsync<GameObject>(address);
+#if UNITY_6000_3_OR_NEWER
+                _ = LoadDoneAction(loadInfo.Handle, loadInfo, m_hlodLayerIndex,
+                    parent, localPosition, localRotation,
+                    localScale, callbacks, destroyCancellationToken);
+#else
                 loadInfo.Handle.Completed += handle =>
                 {
                     if (handle.Status == AsyncOperationStatus.Failed)
@@ -261,6 +291,7 @@ namespace Unity.HLODSystem.Streaming
 
                     loadDoneAction(loadInfo.Handle.Result);
                 };
+#endif // UNITY_6000_3_OR_NEWER
             }
             else
             {
@@ -270,6 +301,41 @@ namespace Unity.HLODSystem.Streaming
 
             return loadInfo;
         }
+		
+#if UNITY_6000_3_OR_NEWER
+        private static async Awaitable LoadDoneAction(
+            AsyncOperationHandle<GameObject> handle, LoadInfo loadInfo, int m_hlodLayerIndex,
+            Transform parent, Vector3 localPosition, Quaternion localRotation,
+            Vector3 localScale, List<Action<GameObject>> callbacks,
+            System.Threading.CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested && !handle.IsDone)
+            {
+                await Awaitable.NextFrameAsync();
+            }
+
+            if (handle.Status != AsyncOperationStatus.Succeeded)
+                return;
+
+            var result = await InstantiateAsync(handle.Result, new InstantiateParameters
+                { parent = parent, worldSpace = false, originalImmutable = true, });
+            if (ct.IsCancellationRequested || result == null || result.Length == 0 || result[0] == null)
+                return;
+
+            GameObject gameObject = result[0];
+            var t = gameObject.transform;
+            t.SetLocalPositionAndRotation(localPosition, localRotation);
+            t.localScale = localScale;
+            gameObject.SetActive(false);
+            ChangeLayersRecursively(t, m_hlodLayerIndex);
+
+            loadInfo.Instance = gameObject;
+            foreach (var callback in callbacks)
+            {
+                callback?.Invoke(gameObject);
+            }
+        }
+#endif // UNITY_6000_3_OR_NEWER
 
         private void Unload(LoadInfo info)
         {
@@ -286,10 +352,17 @@ namespace Unity.HLODSystem.Streaming
         static void ChangeLayersRecursively(Transform trans, int layer)
         {
             trans.gameObject.layer = layer;
+#if OPTIMISATION_UNITY
+            for (int i = 0, childCount = trans.childCount; i < childCount; i++)
+            {
+                ChangeLayersRecursively(trans.GetChild(i), layer);
+            }
+#else
             foreach (Transform child in trans)
             {
                 ChangeLayersRecursively(child, layer);
             }
+#endif // OPTIMISATION_UNITY
         }
     }
 }

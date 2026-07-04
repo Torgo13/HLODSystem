@@ -33,10 +33,13 @@ namespace Unity.HLODSystem.Streaming
                 TextureFormat.ETC_RGB4,
                 TextureFormat.ETC2_RGB,
                 TextureFormat.ETC2_RGBA8,
+#if UNITY_6000_3_OR_NEWER
+#else
                 TextureFormat.PVRTC_RGB4,
                 TextureFormat.PVRTC_RGB2,
                 TextureFormat.PVRTC_RGBA4,
                 TextureFormat.PVRTC_RGBA2,
+#endif // UNITY_6000_3_OR_NEWER
             };
 
             public static string[] SupportTextureFormatStrings;
@@ -446,6 +449,17 @@ namespace Unity.HLODSystem.Streaming
                 options.WebGLCompression = TextureFormat.DXT5;
             }
 
+#if UNITY_6000_3_OR_NEWER
+            if (options.AndroidCompression == null)
+            {
+                options.AndroidCompression = TextureFormat.ASTC_8x8;
+            }
+
+            if (options.iOSCompression == null)
+            {
+                options.iOSCompression = TextureFormat.ASTC_8x8;
+            }
+#else
             if (options.AndroidCompression == null)
             {
                 options.AndroidCompression = TextureFormat.ETC2_RGBA8;
@@ -455,6 +469,7 @@ namespace Unity.HLODSystem.Streaming
             {
                 options.iOSCompression = TextureFormat.PVRTC_RGBA4;
             }
+#endif // UNITY_6000_3_OR_NEWER
 
             if (options.tvOSCompression == null)
             {

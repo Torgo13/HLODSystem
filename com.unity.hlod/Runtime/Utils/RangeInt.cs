@@ -4,7 +4,11 @@ using UnityEngine;
 namespace Unity.HLODSystem.Utils
 {
     [Serializable]
+#if OPTIMISATION
+    public struct RangeInt
+#else
     public class RangeInt
+#endif // OPTIMISATION
     {
         [SerializeField]
         private int m_minValue;

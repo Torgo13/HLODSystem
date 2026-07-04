@@ -104,11 +104,13 @@ namespace Unity.HLODSystem
                 if ( layer >= 0 && layer <= 31)
                     ChangeLayersRecursively(m_instantiatePrefab.transform, layer);
 
+#if UNUSED
                 foreach (var hlod in FindHLODinPrefab(m_instantiatePrefab))
                 {
 //                    HLODManager.Instance.RegisterHLOD(hlod);
 //                    hlod.StartUseInEditor();
                 }
+#endif // UNUSED
             }
           
 
@@ -120,11 +122,13 @@ namespace Unity.HLODSystem
             if (m_instantiatePrefab == null)
                 return;
 
+#if UNUSED
             foreach (var hlod in FindHLODinPrefab(m_instantiatePrefab))
             {
                 //HLODManager.Instance.UnregisterHLOD(hlod);
                 //hlod.StopUseInEditor();
             }
+#endif // UNUSED
             m_instantiatePrefab.SetActive(false);
             DestroyImmediate(m_instantiatePrefab);
 

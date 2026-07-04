@@ -490,6 +490,18 @@ namespace Unity.HLODSystem
                 EditorGUI.indentLevel += 1;
                 
                 var shader = mat.shader;
+#if UNITY_6000_3_OR_NEWER
+                using var _0 = UnityEngine.Pool.ListPool<string>.Get(out var colorPropertyNames);
+                int propertyCount = shader.GetPropertyCount();
+                for (int i = 0; i < propertyCount; ++i)
+                {
+                    string name = shader.GetPropertyName(i);
+                    if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Color)
+                    {
+                        colorPropertyNames.Add(name);
+                    }
+                }
+#else
                 List<string> colorPropertyNames = new List<string>();
                 int propertyCount = ShaderUtil.GetPropertyCount(shader);
                 for (int i = 0; i < propertyCount; ++i)
@@ -500,6 +512,7 @@ namespace Unity.HLODSystem
                         colorPropertyNames.Add(name);
                     }
                 }
+#endif // UNITY_6000_3_OR_NEWER
 
                 int index = colorPropertyNames.IndexOf(batcherOptions.TintColorName);
                 index = EditorGUILayout.Popup("Tint color property", index, colorPropertyNames.ToArray());

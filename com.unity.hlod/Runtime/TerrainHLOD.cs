@@ -201,7 +201,13 @@ namespace Unity.HLODSystem
         {
             if ( m_TerrainData == null )
                 return new Bounds();
+
+#if OPTIMISATION_UNITY
+            Vector3 size = m_TerrainData.size;
+            return new Bounds(size * 0.5f, size);
+#else
             return new Bounds(m_TerrainData.size * 0.5f, m_TerrainData.size);
+#endif // OPTIMISATION_UNITY
         }
 
     }

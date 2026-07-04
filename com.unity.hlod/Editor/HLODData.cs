@@ -264,7 +264,11 @@ namespace Unity.HLODSystem
                 else
                 {
                     m_jsonData = "";
+#if UNITY_6000_3_OR_NEWER
+                    string path = AssetDatabase.GetAssetPath((EntityId)material.InstanceID);
+#else
                     string path  = AssetDatabase.GetAssetPath(material.InstanceID);
+#endif // UNITY_6000_3_OR_NEWER
                     m_assetGuid = AssetDatabase.AssetPathToGUID(path);
                 }
 

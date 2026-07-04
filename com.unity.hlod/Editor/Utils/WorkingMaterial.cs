@@ -214,7 +214,11 @@ namespace Unity.HLODSystem.Utils
             m_textures.Dispose();
             m_textures = new DisposableDictionary<string, WorkingTexture>();
             m_colors = new Dictionary<string, Color>();
+#if UNITY_6000_3_OR_NEWER
+            string path = AssetDatabase.GetAssetPath(mat.GetEntityId());
+#else
             string path = AssetDatabase.GetAssetPath(mat.GetInstanceID());
+#endif // UNITY_6000_3_OR_NEWER
             m_guid = AssetDatabase.AssetPathToGUID(path);
             if (string.IsNullOrEmpty(m_guid))
             {
@@ -234,6 +238,17 @@ namespace Unity.HLODSystem.Utils
             var shader = mat.shader;
             if (shader != null)
             {
+#if UNITY_6000_3_OR_NEWER
+                int propertyCount = shader.GetPropertyCount();
+                for (int i = 0; i < propertyCount; ++i)
+                {
+                    if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Color)
+                    {
+                        string name = shader.GetPropertyName(i);
+                        m_colors.Add(name, mat.GetColor(name));
+                    }
+                }
+#else
                 int propertyCount = ShaderUtil.GetPropertyCount(shader);
                 for (int i = 0; i < propertyCount; ++i)
                 {
@@ -243,6 +258,7 @@ namespace Unity.HLODSystem.Utils
                         m_colors.Add(name, mat.GetColor(name));
                     }
                 }
+#endif // UNITY_6000_3_OR_NEWER
             }
         }
         public WorkingMaterialBuffer(Allocator allocator, int materialId, string name) : this(allocator)
@@ -336,7 +352,11 @@ namespace Unity.HLODSystem.Utils
         
         public Material ToMaterial()
         {
+#if UNITY_6000_3_OR_NEWER
+            Material mat = EditorUtility.EntityIdToObject(m_instanceID) as Material;
+#else
             Material mat = EditorUtility.InstanceIDToObject(m_instanceID) as Material;
+#endif // UNITY_6000_3_OR_NEWER
             
             if (mat == null)
             {

@@ -15,7 +15,11 @@ namespace Unity.HLODSystem
         #region Singleton
 
         private static HLODManager s_instance = null;
+#if UNITY_6000_3_OR_NEWER
+        private bool IsSRP => GraphicsSettings.defaultRenderPipeline != null || QualitySettings.renderPipeline != null;
+#else
         private bool IsSRP => GraphicsSettings.renderPipelineAsset != null || QualitySettings.renderPipeline != null;
+#endif // UNITY_6000_3_OR_NEWER
 
         public static HLODManager Instance
         {
