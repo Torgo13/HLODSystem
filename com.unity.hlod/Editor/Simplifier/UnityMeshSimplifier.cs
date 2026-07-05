@@ -22,6 +22,9 @@ namespace Unity.HLODSystem.Simplifier
 
         protected override IEnumerator GetSimplifiedMesh(Utils.WorkingMesh origin, float quality, Action<Utils.WorkingMesh> resultCallback)
         {
+#if OPTIMISATION
+            using
+#endif // OPTIMISATION
             var meshSimplifier = new global::UnityMeshSimplifier.MeshSimplifier();
             meshSimplifier.Vertices = origin.vertices;
             meshSimplifier.Normals = origin.normals;
@@ -48,6 +51,18 @@ namespace Unity.HLODSystem.Simplifier
                 triCount += meshSimplifier.GetSubMeshTriangles(i).Length;
             }
 
+#if OPTIMISATION
+            Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent,
+                meshSimplifier.Vertices, meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
+                meshSimplifier.UV1, meshSimplifier.UV2, meshSimplifier.UV3, meshSimplifier.UV4,
+                meshSimplifier.ColorsSpan, triCount, meshSimplifier.SubMeshCount, maxBindposes: 0);
+            nwm.name = origin.name;
+            nwm.subMeshCount = meshSimplifier.SubMeshCount;
+            for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
+            {
+                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh), submesh);
+            }
+#else
             Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent, meshSimplifier.Vertices.Length, triCount, meshSimplifier.SubMeshCount, 0);
             nwm.name = origin.name;
             nwm.vertices = meshSimplifier.Vertices;
@@ -63,6 +78,7 @@ namespace Unity.HLODSystem.Simplifier
             {
                 nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh), submesh);
             }
+#endif // OPTIMISATION
 
             if (resultCallback != null)
             {

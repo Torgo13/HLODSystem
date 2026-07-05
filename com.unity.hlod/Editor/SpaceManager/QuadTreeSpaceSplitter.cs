@@ -211,6 +211,13 @@ namespace Unity.HLODSystem.SpaceManager
 
         private List<TargetInfo> CreateTargetInfoList(List<GameObject> gameObjects, Transform transform)
         {
+#if BUGFIX
+            if (gameObjects == null)
+            {
+                return new List<TargetInfo>();
+            }
+#endif // BUGFIX
+
             List<TargetInfo> targetInfos = new List<TargetInfo>(gameObjects.Count);
 
             for (int i = 0; i < gameObjects.Count; ++i)

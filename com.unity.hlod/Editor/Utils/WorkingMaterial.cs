@@ -126,7 +126,12 @@ namespace Unity.HLODSystem.Utils
         }
 
 
+#if BUGFIX
+        private readonly DisposableDictionary<string, WorkingMaterialBuffer> m_cache
+            = new DisposableDictionary<string, WorkingMaterialBuffer>();
+#else
         private Dictionary<string, WorkingMaterialBuffer> m_cache = new Dictionary<string, WorkingMaterialBuffer>();
+#endif // BUGFIX
         public WorkingMaterialBuffer Get(Allocator allocator, Material material)
         {
             WorkingMaterialBuffer buffer = null;

@@ -477,6 +477,77 @@ namespace Unity.HLODSystem.Utils
             m_Triangles = new NativeArray<int>(maxTriangles, allocator);
         }
 
+#if OPTIMISATION
+        private static readonly int ChannelCount = Enum.GetValues(typeof(Channel)).Length;
+        public WorkingMesh(Allocator allocator,
+            System.Collections.Generic.List<Vector3> vertices, System.Collections.Generic.List<Vector3> normals,
+            System.Collections.Generic.List<Vector2> uvs, System.Collections.Generic.List<int[]> subMeshTris,
+            int maxTriangles, int maxBindposes)
+        {
+            int maxVertices = vertices.Count;
+            m_Counts = new NativeArray<int>(ChannelCount, allocator);
+            m_Vertices = new NativeArray<Vector3>(maxVertices, allocator);
+            m_Normals = new NativeArray<Vector3>(maxVertices, allocator);
+            m_Tangents = new NativeArray<Vector4>(maxVertices, allocator);
+            m_UV = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV2 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV3 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV4 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_Colors = new NativeArray<Color>(maxVertices, allocator);
+            m_BoneWeights = new NativeArray<BoneWeight>(maxVertices, allocator);
+            m_Bindposes = new NativeArray<Matrix4x4>(maxBindposes, allocator);
+            m_Name = new NativeArray<byte>(k_MaxNameSize, allocator);
+            m_SubmeshOffset = new NativeArray<int>(subMeshTris.Count, allocator);
+            m_Triangles = new NativeArray<int>(maxTriangles, allocator);
+
+            for (int i = 0; i < maxVertices; i++)
+            {
+                m_Vertices[i] = vertices[i];
+                m_Normals[i] = normals[i];
+                m_UV[i] = uvs[i];
+            }
+
+            for (int i = 0; i < subMeshTris.Count; ++i)
+            {
+                SetTriangles(subMeshTris[i], i);
+            }
+        }
+
+        public WorkingMesh(Allocator allocator,
+            ReadOnlySpan<Vector3> vertices, ReadOnlySpan<Vector3> normals, ReadOnlySpan<Vector4> tangents,
+            ReadOnlySpan<Vector2> uvs, ReadOnlySpan<Vector2> uv2, ReadOnlySpan<Vector2> uv3, ReadOnlySpan<Vector2> uv4,
+            ReadOnlySpan<Color> colors, int maxTriangles, int maxSubmeshes, int maxBindposes)
+        {
+            int maxVertices = vertices.Length;
+            m_Counts = new NativeArray<int>(ChannelCount, allocator);
+            m_Vertices = new NativeArray<Vector3>(maxVertices, allocator);
+            m_Normals = new NativeArray<Vector3>(maxVertices, allocator);
+            m_Tangents = new NativeArray<Vector4>(maxVertices, allocator);
+            m_UV = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV2 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV3 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV4 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_Colors = new NativeArray<Color>(maxVertices, allocator);
+            m_BoneWeights = new NativeArray<BoneWeight>(maxVertices, allocator);
+            m_Bindposes = new NativeArray<Matrix4x4>(maxBindposes, allocator);
+            m_Name = new NativeArray<byte>(k_MaxNameSize, allocator);
+            m_SubmeshOffset = new NativeArray<int>(maxSubmeshes, allocator);
+            m_Triangles = new NativeArray<int>(maxTriangles, allocator);
+
+            for (int i = 0; i < maxVertices; i++)
+            {
+                m_Vertices[i] = vertices[i];
+                m_Normals[i] = normals[i];
+                m_Tangents[i] = tangents[i];
+                m_UV[i] = uvs[i];
+                m_UV2[i] = uv2[i];
+                m_UV3[i] = uv3[i];
+                m_UV4[i] = uv4[i];
+                m_Colors[i] = colors[i];
+            }
+        }
+#endif // OPTIMISATION
+
         public void Dispose()
         {
             if (m_Counts.IsCreated)

@@ -188,7 +188,12 @@ namespace Unity.HLODSystem.Utils
         }
 
 
+#if BUGFIX
+        private readonly DisposableDictionary<Texture2D, WorkingTextureBuffer> m_cache
+            = new DisposableDictionary<Texture2D, WorkingTextureBuffer>();
+#else
         private Dictionary<Texture2D, WorkingTextureBuffer> m_cache = new Dictionary<Texture2D, WorkingTextureBuffer>();
+#endif // BUGFIX
         public WorkingTextureBuffer Get(Allocator allocator, Texture2D texture)
         {
             WorkingTextureBuffer buffer = null;

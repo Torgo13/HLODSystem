@@ -97,6 +97,56 @@ namespace Unity.HLODSystem
                 MakeTexture(layer, layer.normalMapTexture, Vector4.zero, Vector4.one, m_normalTextures);
             }
 
+#if BUGFIX
+            /// <summary>
+            /// If <paramref name="tex"/> is not readable, creates a readable copy.
+            /// </summary>
+            /// <remarks>
+            /// If <see cref="Texture2D.isReadable"/> returns <see langword="true"/>,
+            /// the returned <see cref="Texture2D"/> should be destroyed when no longer needed.
+            /// </remarks>
+            /// <param name="tex">Input <see cref="Texture2D"/>.</param>
+            /// <param name="mipChain">Whether to create mipmaps on the created <see cref="Texture2D"/>.</param>
+            /// <returns>The original <paramref name="tex"/> if it is already readable,
+            /// otherwise returns a readable copy.</returns>
+            public static Texture2D ReadTexture(Texture2D tex, bool mipChain = false)
+            {
+                if (tex.isReadable)
+                    return tex;
+
+                Texture2D readable;
+
+                // No blit is required if the source texture is uncompressed and in the correct format
+                var format = tex.format;
+                if (format == TextureFormat.RGB24 || format == TextureFormat.RGBA32)
+                {
+                    readable = new Texture2D(tex.width, tex.height, format,
+                        mipChain, linear: !tex.isDataSRGB, createUninitialized: true);
+
+                    Graphics.CopyTexture(tex, readable);
+                    return readable;
+                }
+
+                RenderTexture rt = RenderTexture.GetTemporary(tex.width, tex.height, depthBuffer: 0,
+                    RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+
+                Graphics.Blit(tex, rt);
+                RenderTexture previous = RenderTexture.active;
+                RenderTexture.active = rt;
+
+                readable = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32,
+                    mipChain, linear: !tex.isDataSRGB, createUninitialized: true);
+
+                readable.ReadPixels(new Rect(x: 0, y: 0, rt.width, rt.height), destX: 0, destY: 0);
+                readable.Apply();
+
+                RenderTexture.active = previous;
+                RenderTexture.ReleaseTemporary(rt);
+
+                return readable;
+            }
+#endif // BUGFIX
+
             void MakeTexture(TerrainLayer layer, Texture2D texture, Vector4 min, Vector4 max, DisposableList<WorkingTexture> results)
             {
                 bool linear = !GraphicsFormatUtility.IsSRGBFormat(texture.graphicsFormat);
@@ -131,6 +181,10 @@ namespace Unity.HLODSystem
 
                 try
                 {
+#if BUGFIX
+                    texture = ReadTexture(texture, mipChain: true);
+#endif // BUGFIX
+
                     for (int i = 0; i < texture.mipmapCount; ++i)
                     {
                         int width = texture.width >> i;
@@ -708,9 +762,18 @@ namespace Unity.HLODSystem
 
         private WorkingMesh MakeBorder(WorkingMesh source, Heightmap heightmap, int borderCount)
         {
+#if BUGFIX
+            if (source == null || heightmap == null)
+                return null;
+
+            List<Vector3> vertices = source.vertices?.ToList() ?? new List<Vector3>();
+            List<Vector3> normals = source.normals?.ToList() ?? new List<Vector3>();
+            List<Vector2> uvs = source.uv?.ToList() ?? new List<Vector2>();
+#else
             List<Vector3> vertices = source.vertices.ToList();
             List<Vector3> normals = source.normals.ToList();
             List<Vector2> uvs = source.uv.ToList();
+#endif // OPTIMISATION
             List<int[]> subMeshTris = new List<int[]>();
 
             int maxTris = 0;
@@ -782,6 +845,12 @@ namespace Unity.HLODSystem
                 subMeshTris.Add(tris.ToArray());
             }
 
+#if OPTIMISATION
+            WorkingMesh mesh = new WorkingMesh(Allocator.Persistent,
+                vertices, normals, uvs, subMeshTris,
+                maxTris, maxBindposes: 0);
+            mesh.name = source.name;
+#else
             WorkingMesh mesh = new WorkingMesh(Allocator.Persistent, vertices.Count, maxTris, subMeshTris.Count, 0);
             mesh.name = source.name;
             mesh.vertices = vertices.ToArray();
@@ -792,6 +861,7 @@ namespace Unity.HLODSystem
             {
                 mesh.SetTriangles(subMeshTris[i], i);
             }
+#endif // OPTIMISATION
 
             return mesh;
         }
@@ -1098,9 +1168,14 @@ namespace Unity.HLODSystem
                         QuadTreeSpaceSplitter splitter = new QuadTreeSpaceSplitter(null);
 
                         List<SpaceNode> rootNodeList = splitter.CreateSpaceTree(m_hlod.GetBounds(), m_hlod.ChunkSize * 2.0f,
+#if OPTIMISATION
+                        m_hlod.transform, null, progress => { EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Create mesh", progress); });
+#else
                         m_hlod.transform, null, progress => { });
 
                         EditorUtility.DisplayProgressBar("Bake HLOD", "Create mesh", 0.0f);
+#endif // OPTIMISATION
+
                         foreach (var rootNode in rootNodeList)
                         {
                             using (DisposableList<HLODBuildInfo> buildInfos = CreateBuildInfo(data, rootNode))
@@ -1108,6 +1183,21 @@ namespace Unity.HLODSystem
                                 yield return m_queue.WaitFinish();
                                 //Write material & textures
 
+#if OPTIMISATION
+                                ISimplifier simplifier = (ISimplifier)Activator.CreateInstance(
+                                    m_hlod.SimplifierType,
+                                    new object[] { m_hlod.SimplifierOptions });
+                                for (int i = 0; i < buildInfos.Count; ++i)
+                                {
+                                    yield return new BranchCoroutine(simplifier.Simplify(buildInfos[i]));
+                                }
+
+                                yield return new WaitForBranches(progress =>
+                                {
+                                    EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Simplify meshes",
+                                        0.25f + progress * 0.25f);
+                                });
+#else
                                 for (int i = 0; i < buildInfos.Count; ++i)
                                 {
                                     int curIndex = i;
@@ -1122,6 +1212,7 @@ namespace Unity.HLODSystem
 
                                 EditorUtility.DisplayProgressBar("Bake HLOD", "Simplify meshes", 0.0f);
                                 yield return m_queue.WaitFinish();
+#endif // OPTIMISATION
 
                                 Debug.Log("[TerrainHLOD] Simplify: " + sw.Elapsed.ToString("g"));
                                 sw.Reset();
@@ -1226,7 +1317,11 @@ namespace Unity.HLODSystem
                                 //controller
                                 IStreamingBuilder builder =
                                     (IStreamingBuilder)Activator.CreateInstance(m_hlod.StreamingType,
+#if BUGFIX
+                                        new object[] { m_hlod, 0, m_hlod.StreamingOptions });
+#else
                                         new object[] { m_hlod, m_hlod.StreamingOptions });
+#endif // BUGFIX
 
                                 builder.Build(rootNode, buildInfos, m_hlod.gameObject, m_hlod.CullDistance,
                                     m_hlod.LODDistance, true, false,
