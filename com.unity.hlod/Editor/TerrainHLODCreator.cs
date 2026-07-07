@@ -32,10 +32,10 @@ namespace Unity.HLODSystem
 
             try
             {
-                EditorUtility.DisplayProgressBar("Destroy HLOD", "Destroying HLOD files", 0.0f);
                 var convertedPrefabObjects = hlod.ConvertedPrefabObjects;
                 for (int i = 0; i < convertedPrefabObjects.Count; ++i)
                 {
+                    EditorUtility.DisplayProgressBar("Destroy HLOD", "Destroying HLOD files", (float)i / convertedPrefabObjects.Count);
                     PrefabUtility.UnpackPrefabInstance(convertedPrefabObjects[i], PrefabUnpackMode.OutermostRoot,
                         InteractionMode.AutomatedAction);
                 }
@@ -149,10 +149,13 @@ namespace Unity.HLODSystem
 
             void MakeTexture(TerrainLayer layer, Texture2D texture, Vector4 min, Vector4 max, DisposableList<WorkingTexture> results)
             {
+                if (texture == null)
+                    return;
+                
                 bool linear = !GraphicsFormatUtility.IsSRGBFormat(texture.graphicsFormat);
 
-                var offset = layer.tileOffset;
-                var size = layer.tileSize;
+                var offset = layer.tileOffset;  // TODO Unused
+                var size = layer.tileSize;      // TODO Unused
 
                 if (!linear)
                 {
@@ -216,9 +219,9 @@ namespace Unity.HLODSystem
             
             public void Dispose()
             {
-                m_diffuseTextures?.Dispose();
-                m_maskTextures?.Dispose();
-                m_normalTextures?.Dispose();
+                m_diffuseTextures.Dispose();
+                m_maskTextures.Dispose();
+                m_normalTextures.Dispose();
                 m_detector.Dispose();
             }
 
@@ -286,6 +289,7 @@ namespace Unity.HLODSystem
                 return GetNormal(uv.x, uv.y, Mathf.RoundToInt(uv.z));
             }
 
+#if UNUSED
             private WorkingTexture GenerateMipmap(WorkingTexture source)
             {
                 int sx = Mathf.Max(source.Width >> 1, 1);
@@ -318,6 +322,7 @@ namespace Unity.HLODSystem
 
                 return mipmap;
             }
+#endif // UNUSED
 
             private void RemapTexture(WorkingTexture source, Color min, Color max)
             {
@@ -345,6 +350,8 @@ namespace Unity.HLODSystem
 
         private TerrainHLOD m_hlod;
 
+#if OPTIMISATION_NULL
+#else
         private JobQueue m_queue;
         private Heightmap m_heightmap;
 
@@ -353,19 +360,27 @@ namespace Unity.HLODSystem
         private DisposableList<Layer> m_layers;
 
         private Material m_terrainMaterial;
-        private int m_terrainMaterialInstanceId;
-        private string m_terrainMaterialName;
+#endif // OPTIMISATION_NULL
+        private static int m_terrainMaterialInstanceId;
+        private static string m_terrainMaterialName = string.Empty;
 
+#if OPTIMISATION_NULL
+#else
         private Material m_terrainMaterialLow;
-        private int m_terrainMaterialLowInstanceId;
-        private string m_terrainMaterialLowName;
+#endif // OPTIMISATION_NULL
+        private static int m_terrainMaterialLowInstanceId;
+        private static string m_terrainMaterialLowName = string.Empty;
 
         private TerrainHLODCreator(TerrainHLOD hlod)
         {
             m_hlod = hlod;
         }
 
-        private Heightmap CreateSubHightmap(Bounds bounds)
+        private static Heightmap CreateSubHightmap(Bounds bounds, Vector3 m_size, Heightmap m_heightmap)
+            => CreateSubHeightmap(bounds, m_size, m_heightmap);
+
+        private static Heightmap CreateSubHeightmap(Bounds bounds,
+            Vector3 m_size, Heightmap m_heightmap)
         {
             int beginX = Mathf.RoundToInt(bounds.min.x / m_size.x * (m_heightmap.Width-1));
             int beginZ = Mathf.RoundToInt(bounds.min.z / m_size.z * (m_heightmap.Height-1));
@@ -377,7 +392,9 @@ namespace Unity.HLODSystem
 
             return m_heightmap.GetHeightmap(beginX, beginZ, width, height);
         }
-        private WorkingObject CreateBakedTerrain(string name, Bounds bounds, Heightmap heightmap, int distance, bool isLeaf)
+        private static WorkingObject CreateBakedTerrain(string name, Bounds bounds, Heightmap heightmap, int distance, bool isLeaf,
+            Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers,
+            TerrainHLOD m_hlod)
         {
             WorkingObject wo = new WorkingObject(Allocator.Persistent);
             wo.Name = name;
@@ -385,13 +402,13 @@ namespace Unity.HLODSystem
             
             m_queue.EnqueueJob(() =>
             {
-                WorkingMesh mesh = CreateBakedGeometry(name, heightmap, bounds, distance);
+                WorkingMesh mesh = CreateBakedGeometry(name, heightmap, bounds, distance, m_hlod);
                 wo.SetMesh(mesh);
             });
 
             m_queue.EnqueueJob(() =>
             {
-                WorkingMaterial material = CreateBakedMaterial(name, bounds, isLeaf); 
+                WorkingMaterial material = CreateBakedMaterial(name, bounds, isLeaf, m_size, m_queue, m_alphamaps, m_layers, m_hlod); 
                 wo.Materials.Add(material);
             });
 
@@ -399,9 +416,10 @@ namespace Unity.HLODSystem
             return wo;
         }
 
-        private WorkingMesh CreateBakedGeometry(string name, Heightmap heightmap, Bounds bounds, int distance)
+        private static WorkingMesh CreateBakedGeometry(string name, Heightmap heightmap, Bounds bounds, int distance,
+            TerrainHLOD m_hlod)
         {
-            int borderWidth = CalcBorderWidth(heightmap, distance);
+            int borderWidth = CalcBorderWidth(heightmap, distance, m_hlod);
             int borderWidth2x = borderWidth * 2;
             
             WorkingMesh mesh =
@@ -418,7 +436,7 @@ namespace Unity.HLODSystem
 
 
             int vi = 0;
-            //except boder line
+            //except border line
             for (int z = borderWidth; z < heightmap.Height -borderWidth; ++z)
             {
                 for (int x = borderWidth; x < heightmap.Width -borderWidth; ++x)
@@ -466,7 +484,9 @@ namespace Unity.HLODSystem
             return mesh;
         }
 
-        private WorkingMaterial CreateBakedMaterial(string name, Bounds bounds, bool useHighMaterial)
+        private static WorkingMaterial CreateBakedMaterial(string name, Bounds bounds, bool useHighMaterial,
+            Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers,
+            TerrainHLOD m_hlod)
         {
             int matInstanceID = useHighMaterial ? m_terrainMaterialInstanceId : m_terrainMaterialLowInstanceId;
             string matName = useHighMaterial ? m_terrainMaterialName : m_terrainMaterialLowName;
@@ -476,7 +496,7 @@ namespace Unity.HLODSystem
 
             m_queue.EnqueueJob(() =>
             {
-                WorkingTexture albedo = BakeAlbedo(name, bounds, m_hlod.TextureSize);
+                WorkingTexture albedo = BakeAlbedo(name, bounds, m_hlod.TextureSize, m_size, m_queue, m_alphamaps, m_layers);
                 material.AddTexture(m_hlod.AlbedoPropertyName, albedo);
             });
 
@@ -484,7 +504,7 @@ namespace Unity.HLODSystem
             {
                 m_queue.EnqueueJob(() =>
                 {
-                    WorkingTexture normal = BakeNormal(name, bounds, m_hlod.TextureSize);
+                    WorkingTexture normal = BakeNormal(name, bounds, m_hlod.TextureSize, m_size, m_queue, m_alphamaps, m_layers);
                     material.AddTexture(m_hlod.NormalPropertyName, normal);
                 });
             }
@@ -493,7 +513,7 @@ namespace Unity.HLODSystem
             {
                 m_queue.EnqueueJob(() =>
                 {
-                    WorkingTexture mask = BakeMask(name, bounds, m_hlod.TextureSize);
+                    WorkingTexture mask = BakeMask(name, bounds, m_hlod.TextureSize, m_size, m_queue, m_alphamaps, m_layers);
                     material.AddTexture(m_hlod.MaskPropertyName, mask);
                 });
             }
@@ -501,6 +521,7 @@ namespace Unity.HLODSystem
             return material;
         }
 
+        static
         private Color UnPackNormal(Color c, float scale)
         {
             c.r = (c.r * 2 - 1) * scale;
@@ -509,6 +530,7 @@ namespace Unity.HLODSystem
             return c;
         }
 
+        static
         private Color PackNormal(Color c)
         {
             c.r = c.r * 0.5f + 0.5f;
@@ -517,7 +539,10 @@ namespace Unity.HLODSystem
             return c;
         }
 
-        private void EnqueueBlendTextureJob(WorkingTexture texture, Bounds bounds, int resolution, System.Func<int, float, float, float, float, bool, Color> getColor, System.Func<Color, Color> packColor = null)
+        static
+        private void EnqueueBlendTextureJob(WorkingTexture texture, Bounds bounds, int resolution,
+            Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers,
+            System.Func<int, float, float, float, float, bool, Color> getColor, System.Func<Color, Color>? packColor = null)
         {
             bool linear = texture.Linear;
 
@@ -556,7 +581,7 @@ namespace Unity.HLODSystem
                                     break;
                             }
 
-                            //optimize to skip not effect pixels.
+                            //optimize to skip unaffected pixels.
                             if (weight < 0.01f)
                                 continue;
 
@@ -588,13 +613,14 @@ namespace Unity.HLODSystem
             });
         }
 
-        private WorkingTexture BakeAlbedo(string name, Bounds bounds, int resolution)
+        private static WorkingTexture BakeAlbedo(string name, Bounds bounds, int resolution,
+            Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers)
         {
             WorkingTexture albedoTexture = new WorkingTexture(Allocator.Persistent, TextureFormat.RGB24, resolution, resolution, false);
             albedoTexture.Name = name + "_Albedo";
             albedoTexture.WrapMode = TextureWrapMode.Clamp;
 
-            EnqueueBlendTextureJob(albedoTexture, bounds, resolution, (layer, wx, wz, sx, sz, linear) => 
+            EnqueueBlendTextureJob(albedoTexture, bounds, resolution, m_size, m_queue, m_alphamaps, m_layers, (layer, wx, wz, sx, sz, linear) => 
             {
                 Color c = m_layers[layer].GetColorByWorld(wx, wz, sx, sz);
                 if (!linear)
@@ -606,13 +632,14 @@ namespace Unity.HLODSystem
             return albedoTexture;
         }
 
-        private WorkingTexture BakeMask(string name, Bounds bounds, int resolution)
+        private static WorkingTexture BakeMask(string name, Bounds bounds, int resolution,
+            Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers)
         {
             WorkingTexture maskTexture = new WorkingTexture(Allocator.Persistent, TextureFormat.ARGB32, resolution, resolution, false);
             maskTexture.Name = name + "_Mask";
             maskTexture.WrapMode = TextureWrapMode.Clamp;
 
-            EnqueueBlendTextureJob(maskTexture, bounds, resolution, (layer, wx, wz, sx, sz, linear) =>
+            EnqueueBlendTextureJob(maskTexture, bounds, resolution, m_size, m_queue, m_alphamaps, m_layers, (layer, wx, wz, sx, sz, linear) =>
             {
                 Color c = m_layers[layer].GetMaskByWorld(wx, wz, sx, sz);
                 if (!linear)
@@ -623,13 +650,14 @@ namespace Unity.HLODSystem
             return maskTexture;
         }
 
-        private WorkingTexture BakeNormal(string name, Bounds bounds, int resolution)
+        private static WorkingTexture BakeNormal(string name, Bounds bounds, int resolution,
+            Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers)
         {
             WorkingTexture normalTexture = new WorkingTexture(Allocator.Persistent, TextureFormat.RGB24, resolution, resolution, true);
             normalTexture.Name = name + "_Normal";
             normalTexture.WrapMode = TextureWrapMode.Clamp;
 
-            EnqueueBlendTextureJob(normalTexture, bounds, resolution, (layer, wx, wz, sx, sz, linear) =>
+            EnqueueBlendTextureJob(normalTexture, bounds, resolution, m_size, m_queue, m_alphamaps, m_layers, (layer, wx, wz, sx, sz, linear) =>
             {
                 Color c = m_layers[layer].GetNormalByWorld(wx, wz, sx, sz);
                 c = UnPackNormal(c, m_layers[layer].NormalScale);
@@ -645,25 +673,25 @@ namespace Unity.HLODSystem
             return normalTexture;
         }
 
-        private List<Vector2Int> GetEdgeList(List<int> tris)
+        private static List<Vector2Int> GetEdgeList(List<int> tris,
+            HashSet<Vector2Int> candidates, List<Vector2Int> list)
         {
-            HashSet<Vector2Int> candidates = new HashSet<Vector2Int>();
+            candidates.Clear();
 
             int trisCount = tris.Count / 3;
 
+            Span<Vector2Int> edges = stackalloc Vector2Int[3];
+
             for (int i = 0; i < trisCount; ++i)
             {
-                Vector2Int[] edges = new[]
-                {
-                    new Vector2Int(tris[i * 3 + 0], tris[i * 3 + 1]),
-                    new Vector2Int(tris[i * 3 + 1], tris[i * 3 + 2]),
-                    new Vector2Int(tris[i * 3 + 2], tris[i * 3 + 0])
-                };
+                edges[0] = new Vector2Int(tris[i * 3 + 0], tris[i * 3 + 1]);
+                edges[1] = new Vector2Int(tris[i * 3 + 1], tris[i * 3 + 2]);
+                edges[2] = new Vector2Int(tris[i * 3 + 2], tris[i * 3 + 0]);
 
                 for (int ei = 0; ei < edges.Length; ++ei)
                 {
                     Vector2Int otherSideEdge = new Vector2Int(edges[ei].y, edges[ei].x);
-                    if (candidates.Contains(otherSideEdge) == true)
+                    if (candidates.Contains(otherSideEdge))
                     {
                         candidates.Remove(otherSideEdge);
                     }
@@ -674,8 +702,8 @@ namespace Unity.HLODSystem
                 }
             }
             
-
-            return candidates.ToList();
+            list.AddRange(candidates);
+            return list;
         }
 
         struct BorderVertex
@@ -684,10 +712,13 @@ namespace Unity.HLODSystem
             public int ClosestIndex;
         }
 
-        private List<BorderVertex> GenerateBorderVertices(Heightmap heightmap, int borderCount)
+        private static List<BorderVertex> GenerateBorderVertices(Heightmap heightmap, int borderCount,
+            List<BorderVertex> borderVertices)
         {
             //generate border vertices
-            List<BorderVertex> borderVertices = new List<BorderVertex>((heightmap.Width + heightmap.Height) * 2);
+            int capacity = (heightmap.Width + heightmap.Height) * 2;
+            if (borderVertices.Capacity < capacity)
+                borderVertices.Capacity = capacity;
 
             int xBorderOffset = Mathf.Max((heightmap.Width - 1) / borderCount, 1 );    //< avoid 0
             int yBorderOffset = Mathf.Max((heightmap.Height - 1) / borderCount, 1);    //< avoid 0
@@ -760,15 +791,23 @@ namespace Unity.HLODSystem
         }
         
 
-        private WorkingMesh MakeBorder(WorkingMesh source, Heightmap heightmap, int borderCount)
+        private WorkingMesh MakeBorder(WorkingMesh? source, Heightmap? heightmap, int borderCount,
+            List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs,
+            List<int> tris, List<Vector2Int> edges, HashSet<int> vertexIndces,
+            List<BorderVertex> borderVertices, HashSet<Vector2Int> candidates)
         {
 #if BUGFIX
-            if (source == null || heightmap == null)
-                return null;
+            if (source == null)
+                throw new NullReferenceException(nameof(source));
+            if (heightmap == null)
+                throw new NullReferenceException(nameof(heightmap));
 
-            List<Vector3> vertices = source.vertices?.ToList() ?? new List<Vector3>();
-            List<Vector3> normals = source.normals?.ToList() ?? new List<Vector3>();
-            List<Vector2> uvs = source.uv?.ToList() ?? new List<Vector2>();
+            vertices.Clear();
+            normals.Clear();
+            uvs.Clear();
+            vertices.AddRange(source.Vertices);
+            normals.AddRange(source.Normals);
+            uvs.AddRange(source.UV);
 #else
             List<Vector3> vertices = source.vertices.ToList();
             List<Vector3> normals = source.normals.ToList();
@@ -780,10 +819,11 @@ namespace Unity.HLODSystem
 
             for (int si = 0; si < source.subMeshCount; ++si)
             {
-                List<int> tris = source.GetTriangles(si).ToList();
-                List<Vector2Int> edges = GetEdgeList(tris);
-                HashSet<int> vertexIndces = new HashSet<int>();
-                List<BorderVertex> edgeVertices = new List<BorderVertex>();
+                tris.Clear();
+                tris.AddRange(source.GetTrianglesNative(si));
+                edges.Clear();
+                _ = GetEdgeList(tris, candidates, edges);
+                vertexIndces.Clear();
                 
                 for (int ei = 0; ei < edges.Count; ++ei)
                 {
@@ -791,7 +831,8 @@ namespace Unity.HLODSystem
                     vertexIndces.Add(edges[ei].y);
                 }
                 
-                List<BorderVertex> borderVertices = GenerateBorderVertices(heightmap, borderCount);
+                borderVertices.Clear();
+                _ = GenerateBorderVertices(heightmap, borderCount, borderVertices);
                 
                 //calculate closest vertex from border vertices.
                 for (int i = 0; i < borderVertices.Count; ++i)
@@ -845,28 +886,27 @@ namespace Unity.HLODSystem
                 subMeshTris.Add(tris.ToArray());
             }
 
-#if OPTIMISATION
-            WorkingMesh mesh = new WorkingMesh(Allocator.Persistent,
-                vertices, normals, uvs, subMeshTris,
-                maxTris, maxBindposes: 0);
-            mesh.name = source.name;
-#else
             WorkingMesh mesh = new WorkingMesh(Allocator.Persistent, vertices.Count, maxTris, subMeshTris.Count, 0);
             mesh.name = source.name;
+#if OPTIMISATION
+            mesh.CopyFrom(vertices, normals, uvs);
+#else
             mesh.vertices = vertices.ToArray();
             mesh.normals = normals.ToArray();
             mesh.uv = uvs.ToArray();
+#endif // OPTIMISATION
 
             for (int i = 0; i < subMeshTris.Count; ++i)
             {
                 mesh.SetTriangles(subMeshTris[i], i);
             }
-#endif // OPTIMISATION
 
             return mesh;
         }
 
-        private void ReampUV(WorkingMesh mesh, Heightmap heightmap)
+        private static void ReampUV(WorkingMesh mesh, Heightmap heightmap) => RemapUV(mesh, heightmap);
+
+        private static void RemapUV(WorkingMesh mesh, Heightmap heightmap)
         {
             var vertices = mesh.vertices;
             var uvs = mesh.uv;
@@ -882,7 +922,8 @@ namespace Unity.HLODSystem
 
             mesh.uv = uvs;
         }
-        private int CalcBorderWidth(Heightmap heightmap, int distance)
+        private static int CalcBorderWidth(Heightmap heightmap, int distance,
+            TerrainHLOD m_hlod)
         {
             if (m_hlod.SimplifierType == typeof(Simplifier.None))
             {
@@ -909,7 +950,7 @@ namespace Unity.HLODSystem
             float sizeRatio = targetSizePerTri / sourceSizePerTri;
             float sizeRatioSqrt = Mathf.Sqrt(sizeRatio);
             
-            //sizeRatioSqrt is little bit big i think.
+            //sizeRatioSqrt is little bit big I think.
             //So I adjust the value by divide 2.
             return Mathf.Max((int) sizeRatioSqrt / 2, 1);
         }
@@ -922,18 +963,22 @@ namespace Unity.HLODSystem
             public List<Vector2Int> EdgeList = new List<Vector2Int>();
         }
 
-        private WorkingMesh MakeFillHoleMesh(WorkingMesh source)
+        private WorkingMesh MakeFillHoleMesh(WorkingMesh source,
+            List<int[]> newTris, List<int> tris, List<Vector2Int> edgeList,
+            List<EdgeGroup> groups, HashSet<Vector2Int> candidates)
         {
             int totalTris = 0;
-            List<int[]> newTris = new List<int[]>();
+            newTris.Clear();
             
             for (int si = 0; si < source.subMeshCount; ++si)
             {
-                List<int> tris = source.GetTriangles(si).ToList();
-                List<Vector2Int> edgeList = GetEdgeList(tris);
+                tris.Clear();
+                tris.AddRange(source.GetTrianglesNative(si));
+                edgeList.Clear();
+                _ = GetEdgeList(tris, candidates, edgeList);
                 
                 
-                List<EdgeGroup> groups = new List<EdgeGroup>();
+                groups.Clear();
                 for (int i = 0; i < edgeList.Count; ++i)
                 {
                     EdgeGroup group = new EdgeGroup();
@@ -1040,9 +1085,13 @@ namespace Unity.HLODSystem
             
             WorkingMesh mesh = new WorkingMesh(Allocator.Persistent, source.vertexCount, totalTris, source.subMeshCount, 0);
             mesh.name = source.name;
+#if OPTIMISATION
+            mesh.CopyFrom(source);
+#else
             mesh.vertices = source.vertices;
             mesh.normals = source.normals;
             mesh.uv = source.uv;
+#endif // OPTIMISATION
 
             for (int i = 0; i < newTris.Count; ++i)
             {
@@ -1052,13 +1101,16 @@ namespace Unity.HLODSystem
             return mesh;
         }
 
-        private DisposableList<HLODBuildInfo> CreateBuildInfo(TerrainData data, SpaceNode root)
+        private static DisposableList<HLODBuildInfo> CreateBuildInfo(TerrainData data, SpaceNode root,
+            Heightmap m_heightmap, Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers,
+            TerrainHLOD m_hlod, DisposableList<HLODBuildInfo> results, Queue<SpaceNode> trevelQueue,
+            Queue<int> parentQueue, Queue<string> nameQueue, Queue<int> depthQueue)
         {
-            DisposableList<HLODBuildInfo> results = new DisposableList<HLODBuildInfo>();
-            Queue<SpaceNode> trevelQueue = new Queue<SpaceNode>();
-            Queue<int> parentQueue = new Queue<int>();
-            Queue<string> nameQueue = new Queue<string>();
-            Queue<int> depthQueue = new Queue<int>();
+            results.Clear();
+            trevelQueue.Clear();
+            parentQueue.Clear();
+            nameQueue.Clear();
+            depthQueue.Clear();
 
             int maxDepth = 0;
 
@@ -1089,8 +1141,8 @@ namespace Unity.HLODSystem
                     depthQueue.Enqueue(depth + 1);
                 }
                 
-                info.Heightmap = CreateSubHightmap(node.Bounds);
-                info.WorkingObjects.Add(CreateBakedTerrain(name, node.Bounds, info.Heightmap, depth, node.GetChildCount() == 0));
+                info.Heightmap = CreateSubHightmap(node.Bounds, m_size, m_heightmap);
+                info.WorkingObjects.Add(CreateBakedTerrain(name, node.Bounds, info.Heightmap, depth, node.GetChildCount() == 0, m_size, m_queue, m_alphamaps, m_layers, m_hlod));
                 info.Distances.Add(depth);
                 results.Add(info);
                 
@@ -1115,7 +1167,7 @@ namespace Unity.HLODSystem
         {
             try
             {
-                using (m_queue = new JobQueue(8))
+                using (var m_queue = new JobQueue(8))
                 {
                     Stopwatch sw = new Stopwatch();
 
@@ -1128,14 +1180,21 @@ namespace Unity.HLODSystem
                     EditorUtility.DisplayProgressBar("Bake HLOD", "Initialize Bake", 0.0f);
 
 
-                    TerrainData data = m_hlod.TerrainData;
+                    TerrainData? data = m_hlod.TerrainData;
+#if SAFETY
+                    if (data == null)
+                        yield break;
+#endif // SAFETY
 
+                    var
                     m_size = data.size;
 
+                    var
                     m_heightmap = new Heightmap(data.heightmapResolution, data.heightmapResolution, data.size,
                         data.GetHeights(0, 0, data.heightmapResolution, data.heightmapResolution));
 
                     string materialPath = AssetDatabase.GUIDToAssetPath(m_hlod.MaterialGUID);
+                    var
                     m_terrainMaterial = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
                     if (m_terrainMaterial == null)
                         m_terrainMaterial = new Material(Shader.Find("Lightweight Render Pipeline/Lit-Terrain-HLOD-High"));
@@ -1144,6 +1203,7 @@ namespace Unity.HLODSystem
                     m_terrainMaterialName = m_terrainMaterial.name;
 
                     materialPath = AssetDatabase.GUIDToAssetPath(m_hlod.MaterialLowGUID);
+                    var
                     m_terrainMaterialLow = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
                     if (m_terrainMaterialLow == null)
                         m_terrainMaterialLow = new Material(Shader.Find("Lightweight Render Pipeline/Lit-Terrain-HLOD-Low"));
@@ -1151,8 +1211,8 @@ namespace Unity.HLODSystem
                     m_terrainMaterialLowInstanceId = m_terrainMaterialLow.GetInstanceID();
                     m_terrainMaterialLowName = m_terrainMaterialLow.name;
 
-                    using (m_alphamaps = new DisposableList<WorkingTexture>())
-                    using (m_layers = new DisposableList<Layer>())
+                    using (var m_alphamaps = new DisposableList<WorkingTexture>())
+                    using (var m_layers = new DisposableList<Layer>())
                     {
                         for (int i = 0; i < data.alphamapTextures.Length; ++i)
                         {
@@ -1176,9 +1236,17 @@ namespace Unity.HLODSystem
                         EditorUtility.DisplayProgressBar("Bake HLOD", "Create mesh", 0.0f);
 #endif // OPTIMISATION
 
+                        DisposableList<HLODBuildInfo> results = new DisposableList<HLODBuildInfo>();
+                        Queue<SpaceNode> trevelQueue = new Queue<SpaceNode>();
+                        Queue<int> parentQueue = new Queue<int>();
+                        Queue<string> nameQueue = new Queue<string>();
+                        Queue<int> depthQueue = new Queue<int>();
+                        using var _0 = UnityEngine.Pool.ListPool<Material>.Get(out var materials);
                         foreach (var rootNode in rootNodeList)
                         {
-                            using (DisposableList<HLODBuildInfo> buildInfos = CreateBuildInfo(data, rootNode))
+                            using (DisposableList<HLODBuildInfo> buildInfos = CreateBuildInfo(data, rootNode,
+                                m_heightmap, m_size, m_queue, m_alphamaps, m_layers, m_hlod,
+                                results, trevelQueue, parentQueue, nameQueue, depthQueue))
                             {
                                 yield return m_queue.WaitFinish();
                                 //Write material & textures
@@ -1186,7 +1254,7 @@ namespace Unity.HLODSystem
 #if OPTIMISATION
                                 ISimplifier simplifier = (ISimplifier)Activator.CreateInstance(
                                     m_hlod.SimplifierType,
-                                    new object[] { m_hlod.SimplifierOptions });
+                                    m_hlod.SimplifierOptions);
                                 for (int i = 0; i < buildInfos.Count; ++i)
                                 {
                                     yield return new BranchCoroutine(simplifier.Simplify(buildInfos[i]));
@@ -1224,6 +1292,18 @@ namespace Unity.HLODSystem
                                     HLODBuildInfo info = buildInfos[i];
                                     m_queue.EnqueueJob(() =>
                                     {
+                                        List<Vector3> vertices = new List<Vector3>();
+                                        List<Vector3> normals = new List<Vector3>();
+                                        List<Vector2> uvs = new List<Vector2>();
+                                        var tris = new List<int>();
+                                        var edges = new List<Vector2Int>();
+                                        var vertexIndces = new HashSet<int>();
+                                        var borderVertices = new List<BorderVertex>();
+                                        var candidates = new HashSet<Vector2Int>();
+                                        var newTris = new List<int[]>();
+                                        var edgeList = new List<Vector2Int>();
+                                        var groups = new List<EdgeGroup>();
+                                        
                                         for (int oi = 0; oi < info.WorkingObjects.Count; ++oi)
                                         {
                                             WorkingObject o = info.WorkingObjects[oi];
@@ -1231,10 +1311,11 @@ namespace Unity.HLODSystem
                                                                     Mathf.RoundToInt(Mathf.Pow(2.0f,
                                                                         (float)info.Distances[oi]));
                                             using (WorkingMesh m = MakeBorder(o.Mesh, info.Heightmap,
-                                                       borderVertexCount))
+                                                       borderVertexCount, vertices, normals, uvs,
+                                                       tris, edges, vertexIndces, borderVertices, candidates))
                                             {
                                                 ReampUV(m, info.Heightmap);
-                                                o.SetMesh(MakeFillHoleMesh(m));
+                                                o.SetMesh(MakeFillHoleMesh(m, newTris, tris, edgeList, groups, candidates));
                                             }
                                         }
                                     });
@@ -1253,7 +1334,7 @@ namespace Unity.HLODSystem
                                     HLODBuildInfo info = buildInfos[i];
                                     if (node.HasChild() == false)
                                     {
-                                        SpaceNode parent = node.ParentNode;
+                                        SpaceNode? parent = node.ParentNode;
                                         node.ParentNode = null;
 
                                         GameObject go = new GameObject(buildInfos[i].Name);
@@ -1261,7 +1342,7 @@ namespace Unity.HLODSystem
                                         for (int wi = 0; wi < info.WorkingObjects.Count; ++wi)
                                         {
                                             WorkingObject wo = info.WorkingObjects[wi];
-                                            GameObject targetGO = null;
+                                            GameObject targetGO;
                                             if (wi == 0)
                                             {
                                                 targetGO = go;
@@ -1272,7 +1353,7 @@ namespace Unity.HLODSystem
                                                 targetGO.transform.SetParent(go.transform, false);
                                             }
 
-                                            List<Material> materials = new List<Material>();
+                                            materials.Clear();
                                             for (int mi = 0; mi < wo.Materials.Count; ++mi)
                                             {
 
@@ -1287,7 +1368,9 @@ namespace Unity.HLODSystem
                                                 string[] textureNames = wm.GetTextureNames();
                                                 for (int ti = 0; ti < textureNames.Length; ++ti)
                                                 {
-                                                    WorkingTexture wt = wm.GetTexture(textureNames[ti]);
+                                                    WorkingTexture? wt = wm.GetTexture(textureNames[ti]);
+                                                    if (wt == null)
+                                                        continue;
                                                     Texture2D tex = wt.ToTexture();
                                                     tex.wrapMode = wt.WrapMode;
                                                     mat.name = targetGO.name + "_Mat";
@@ -1298,17 +1381,18 @@ namespace Unity.HLODSystem
                                                 materials.Add(mat);
                                             }
 
-                                            targetGO.AddComponent<MeshFilter>().sharedMesh = wo.Mesh.ToMesh();
+                                            if (wo.Mesh != null)
+                                                targetGO.AddComponent<MeshFilter>().sharedMesh = wo.Mesh.ToMesh();
 
                                             var mr = targetGO.AddComponent<MeshRenderer>();
-                                            mr.sharedMaterials = materials.ToArray();
+                                            mr.SetSharedMaterials(materials);
                                             mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
                                         }
 
                                         go.transform.SetParent(m_hlod.transform, false);
                                         m_hlod.AddGeneratedResource(go);
 
-                                        parent.Objects.Add(go);
+                                        parent?.Objects.Add(go);
                                         buildInfos.RemoveAt(i);
                                         i -= 1;
                                     }

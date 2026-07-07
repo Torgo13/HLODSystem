@@ -52,14 +52,14 @@ namespace Unity.HLODSystem.Cache
         {
             Instance.UpdateImpl(simplifierType, originalMesh, simplifiedMesh, qualtiy);
         }
-        public static Mesh Get(Type simplifierType, Mesh mesh, float quality)
+        public static Mesh? Get(Type simplifierType, Mesh mesh, float quality)
         {
             return Instance.GetImpl(simplifierType, mesh, quality);
         }
         #endregion
 
         #region Singleton
-        private static SimplifiedCache s_Instance;
+        private static SimplifiedCache? s_Instance;
 
         private static SimplifiedCache Instance
         {
@@ -110,7 +110,7 @@ namespace Unity.HLODSystem.Cache
                 }
             }
         }
-        private Mesh GetImpl(Type simplifierType, Mesh mesh, float quality)
+        private Mesh? GetImpl(Type simplifierType, Mesh mesh, float quality)
         {
             string path = AssetDatabase.GetAssetPath(mesh);
             string guid = AssetDatabase.AssetPathToGUID(path);
@@ -123,7 +123,7 @@ namespace Unity.HLODSystem.Cache
             return GetMesh(simplifierType, mesh, quality, guid, time.ToFileTimeUtc());
         }
 
-        private Mesh GetMesh(Type simplifiedType, Mesh source, float quality, string guid, long time)
+        private Mesh? GetMesh(Type simplifiedType, Mesh source, float quality, string guid, long time)
         {
             SimplifiedMeshList meshList = GetMeshList(guid, time);
 
@@ -157,7 +157,7 @@ namespace Unity.HLODSystem.Cache
             meshList.name = guid;
 
             string path = GetAssetPath(guid);
-            string dir = Path.GetDirectoryName(path);
+            string dir = Path.GetDirectoryName(path)!;
             if (Directory.Exists(dir) == false)
             {
                 Directory.CreateDirectory(dir);
@@ -166,7 +166,7 @@ namespace Unity.HLODSystem.Cache
             AssetDatabase.CreateAsset(meshList, path);
             return meshList;
         }
-        private SimplifiedMeshList LoadMeshList(string guid)
+        private SimplifiedMeshList? LoadMeshList(string guid)
         {
             string path = GetAssetPath(guid);
             if (System.IO.File.Exists(path) == false)

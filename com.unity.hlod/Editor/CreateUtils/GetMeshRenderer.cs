@@ -24,13 +24,22 @@ namespace Unity.HLODSystem
             
             public MeshRendererCalculator(List<GameObject> targetGameObjects)
             {
+                using var _0 = UnityEngine.Pool.ListPool<HLODMeshSetter>.Get(out var meshSetters);
+                using var _1 = UnityEngine.Pool.ListPool<MeshRenderer>.Get(out var meshRenderers);
+                using var _2 = UnityEngine.Pool.ListPool<LODGroup>.Get(out var lodGroups);
                 for (int oi = 0; oi < targetGameObjects.Count; ++oi)
                 {
                     var target = targetGameObjects[oi];
                     
-                    m_meshSetters.AddRange(target.GetComponentsInChildren<HLODMeshSetter>());
-                    m_meshRenderers.AddRange(target.GetComponentsInChildren<MeshRenderer>());
-                    m_lodGroups.AddRange(target.GetComponentsInChildren<LODGroup>());
+                    meshSetters.Clear();
+                    meshRenderers.Clear();
+                    lodGroups.Clear();
+                    target.GetComponentsInChildren<HLODMeshSetter>(meshSetters);
+                    target.GetComponentsInChildren<MeshRenderer>(meshRenderers);
+                    target.GetComponentsInChildren<LODGroup>(lodGroups);
+                    m_meshSetters.AddRange(meshSetters);
+                    m_meshRenderers.AddRange(meshRenderers);
+                    m_lodGroups.AddRange(lodGroups);
                 }
 
                 RemoveDisabled(m_meshSetters);
@@ -59,7 +68,7 @@ namespace Unity.HLODSystem
                         //Remove every mesh renderer which is registered to the LODGroup.
                         for (int ri = 0; ri < lodRenderers.Length; ++ri)
                         {
-                            MeshRenderer mr = lodRenderers[ri] as MeshRenderer;
+                            MeshRenderer? mr = lodRenderers[ri] as MeshRenderer;
                             if (mr == null)
                                 continue;
 
@@ -73,8 +82,9 @@ namespace Unity.HLODSystem
                 for (int mi = 0; mi < m_meshRenderers.Count; ++mi)
                 {
                     MeshRenderer mr = m_meshRenderers[mi];
-                    
-                    float max = Mathf.Max(mr.bounds.size.x, mr.bounds.size.y, mr.bounds.size.z);
+
+                    var size = mr.bounds.size;
+                    float max = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
                     if (max < minObjectSize)
                         continue;
 
@@ -83,7 +93,6 @@ namespace Unity.HLODSystem
 
                 m_isCalculated = true;
             }
-
 
             private void AddResultFromMeshSetters(HLODMeshSetter setter, float minObjectSize, int level)
             {
@@ -103,7 +112,7 @@ namespace Unity.HLODSystem
                 Renderer[] renderers = lods.Last().renderers;
                 for (int ri = 0; ri < renderers.Length; ++ri)
                 {
-                    MeshRenderer mr = renderers[ri] as MeshRenderer;
+                    MeshRenderer? mr = renderers[ri] as MeshRenderer;
 
                     if (mr == null)
                         continue;
@@ -111,7 +120,8 @@ namespace Unity.HLODSystem
                     if (mr.gameObject.activeInHierarchy == false || mr.enabled == false)
                         continue;
 
-                    float max = Mathf.Max(mr.bounds.size.x, mr.bounds.size.y, mr.bounds.size.z);
+                    var size = mr.bounds.size;
+                    float max = Mathf.Max(size.x, size.y, size.z);
                     if (max < minObjectSize)
                         continue;
 
@@ -121,8 +131,12 @@ namespace Unity.HLODSystem
 
             private void RemoveUnderMeshSetters(HLODMeshSetter setter)
             {
-                m_lodGroups.RemoveAll(setter.GetComponentsInChildren<LODGroup>());
-                m_meshRenderers.RemoveAll(setter.GetComponentsInChildren<MeshRenderer>());
+                using var _0 = UnityEngine.Pool.ListPool<LODGroup>.Get(out var lodGroups);
+                using var _1 = UnityEngine.Pool.ListPool<MeshRenderer>.Get(out var meshRenderers);
+                setter.GetComponentsInChildren<LODGroup>(lodGroups);
+                setter.GetComponentsInChildren<MeshRenderer>(meshRenderers);
+                m_lodGroups.RemoveAll(lodGroups);
+                m_meshRenderers.RemoveAll(meshRenderers);
             }
 
             
@@ -183,12 +197,10 @@ namespace Unity.HLODSystem
         
         public static List<MeshRenderer> GetMeshRenderers(GameObject gameObject, float minObjectSize, int level)
         {
-            List<GameObject> tmpList = new List<GameObject>();
+            using var _0 = UnityEngine.Pool.ListPool<GameObject>.Get(out var tmpList);
             tmpList.Add(gameObject);
             
-            MeshRendererCalculator calculator = new MeshRendererCalculator(tmpList);
-            calculator.Calculate(minObjectSize, level);
-            return calculator.ResultMeshRenderers;
+            return GetMeshRenderers(tmpList, minObjectSize, level);
         }
 
     }

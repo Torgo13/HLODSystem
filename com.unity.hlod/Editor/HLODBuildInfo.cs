@@ -32,10 +32,6 @@ namespace Unity.HLODSystem
                 get { return m_heights[z + 1, x + 1]; }
             }
 
-            private Heightmap()
-            {
-            }
-
             public Heightmap(int width, int height, Vector3 size, float[,] heights)
             {
                 m_width = width;
@@ -72,15 +68,11 @@ namespace Unity.HLODSystem
 
             public Heightmap GetHeightmap(int beginX, int beginZ, int width, int height)
             {
-                Heightmap heightmap = new Heightmap();
-                heightmap.m_width = width;
-                heightmap.m_height = height;
+                Heightmap heightmap = new Heightmap(width, height,
+                    new Vector3(m_scale.x * (width-1), m_size.y, m_scale.z * (height-1)), m_heights);
 
                 heightmap.m_offset = new Vector3(beginX * m_scale.x, 0.0f, beginZ * m_scale.z);
-                heightmap.m_size = new Vector3(m_scale.x * (width-1), m_size.y, m_scale.z * (height-1));
                 heightmap.m_scale = m_scale;
-
-                heightmap.m_heights = new float[height+2, width+2];
 
                 for (int x = 0; x < width+2; ++x)
                 {

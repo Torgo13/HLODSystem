@@ -9,13 +9,11 @@ using Object = UnityEngine.Object;
 
 namespace Unity.HLODSystem.Streaming
 {
+    sealed
     public class AddressableHLODController : HLODControllerBase
     {
         public interface ICustomLoader
         {
-#if UNITY_6000_3_OR_NEWER
-            public void CustomLoad(string key, Awaitable loadDoneAction);
-#endif // UNITY_6000_3_OR_NEWER
             public void CustomLoad(string key, Action<GameObject> loadDoneAction);
             public void CustomUnload(string key);
         }
@@ -23,11 +21,11 @@ namespace Unity.HLODSystem.Streaming
         [Serializable]
         public class ChildObject
         {
-            public GameObject GameObject;
+            public GameObject? GameObject;
 
-            public string Address;
+            public string Address = string.Empty;
 
-            public Transform Parent;
+            public Transform? Parent;
             public Vector3 Position;
             public Quaternion Rotation;
             public Vector3 Scale;
@@ -37,12 +35,13 @@ namespace Unity.HLODSystem.Streaming
 
         [SerializeField] private List<string> m_lowObjects = new List<string>();
 
+        sealed
         class LoadInfo
         {
-            public string Key;
+            public string Key = string.Empty;
             public bool LoadFromCustom;
             public AsyncOperationHandle<GameObject> Handle;
-#if UNITY_6000_3_OR_NEWER
+#if !UNITY_6000_3_OR_NEWER
             private GameObject _instance;
             public GameObject Instance
             {
@@ -58,21 +57,21 @@ namespace Unity.HLODSystem.Streaming
                 set => _instance = value;
             }
 #else
-            public GameObject Instance;
+            public GameObject? Instance;
 #endif // UNITY_6000_3_OR_NEWER
         }
 
         private Dictionary<int, LoadInfo> m_highObjectLoadInfos = new Dictionary<int, LoadInfo>();
         private Dictionary<int, LoadInfo> m_lowObjectLoadInfos = new Dictionary<int, LoadInfo>();
 
-        private GameObject m_hlodMeshesRoot;
+        private GameObject? m_hlodMeshesRoot;
         private int m_hlodLayerIndex;
 
-        private ICustomLoader m_customLoader;
+        private ICustomLoader? m_customLoader;
 
-        public event Action<GameObject> HighObjectCreated;
+        public event Action<GameObject>? HighObjectCreated;
 
-        public ICustomLoader CustomLoader
+        public ICustomLoader? CustomLoader
         {
             set { m_customLoader = value; }
             get { return m_customLoader; }
@@ -82,7 +81,7 @@ namespace Unity.HLODSystem.Streaming
 #if UNITY_EDITOR
         public override GameObject GetHighSceneObject(int id)
         {
-            return m_highObjects[id].GameObject;
+            return m_highObjects[id].GameObject!;
         }
 #endif
 
@@ -109,7 +108,7 @@ namespace Unity.HLODSystem.Streaming
                 }
                 else if (m_highObjects[i].GameObject != null)
                 {
-                    m_highObjects[i].GameObject.SetActive(false);
+                    m_highObjects[i].GameObject!.SetActive(false);
                 }
             }
         }
@@ -163,17 +162,17 @@ namespace Unity.HLODSystem.Streaming
             return m_lowObjects[index];
         }
 
-        public override void LoadHighObject(int id, Action<GameObject> loadDoneCallback)
+        public override void LoadHighObject(int id, Action<GameObject>? loadDoneCallback)
         {
             if (m_highObjects[id].GameObject != null)
             {
-                var gameObject = m_highObjects[id].GameObject;
+                var gameObject = m_highObjects[id].GameObject!;
                 ChangeLayersRecursively(gameObject.transform, m_hlodLayerIndex);
                 loadDoneCallback?.Invoke(gameObject);
             }
             else
             {
-                List<Action<GameObject>> callbacks = new List<Action<GameObject>>();
+                var callbacks = new List<Action<GameObject>?>();
                 callbacks.Add(loadDoneCallback);
                 callbacks.Add(o => { HighObjectCreated?.Invoke(o); });
 
@@ -184,13 +183,12 @@ namespace Unity.HLODSystem.Streaming
             }
         }
 
-        public override void LoadLowObject(int id, Action<GameObject> loadDoneCallback)
+        public override void LoadLowObject(int id, Action<GameObject>? loadDoneCallback)
         {
-
-            List<Action<GameObject>> callbacks = new List<Action<GameObject>>();
+            var callbacks = new List<Action<GameObject>?>();
             callbacks.Add(loadDoneCallback);
 
-            LoadInfo loadInfo = Load(m_lowObjects[id], m_hlodMeshesRoot.transform, Vector3.zero,
+            LoadInfo loadInfo = Load(m_lowObjects[id], m_hlodMeshesRoot!.transform, Vector3.zero,
                 Quaternion.identity, Vector3.one, callbacks);
             
             m_lowObjectLoadInfos.Add(id, loadInfo);
@@ -200,7 +198,8 @@ namespace Unity.HLODSystem.Streaming
         {
             if (string.IsNullOrEmpty(m_highObjects[id].Address) == true)
             {
-                m_highObjects[id].GameObject.SetActive(false);
+                if (m_highObjects[id].GameObject != null)
+                    m_highObjects[id].GameObject!.SetActive(false);
             }
             else
             {
@@ -211,11 +210,12 @@ namespace Unity.HLODSystem.Streaming
 
                     m_highObjectLoadInfos.Remove(id);
                 }
+#if ZERO
                 else
                 {
                     Debug.LogError($"HighObject handle not found: {id}");
                 }
-                
+#endif // ZERO
             }
 
             
@@ -231,13 +231,15 @@ namespace Unity.HLODSystem.Streaming
                 m_lowObjectLoadInfos.Remove(id);
                 
             }
+#if ZERO
             else
             {
                 Debug.LogError($"LowObject handle not found: {id}");
             }
+#endif // ZERO
         }
 
-        private void DestoryObject(Object obj)
+        private void DestoryObject(Object? obj)
         {
 #if SAFETY
             if (obj == null)
@@ -251,12 +253,14 @@ namespace Unity.HLODSystem.Streaming
 #endif
         }
 
-        private LoadInfo Load(string address, Transform parent, Vector3 localPosition, Quaternion localRotation,
-            Vector3 localScale, List<Action<GameObject>> callbacks)
+        private LoadInfo Load(string address, Transform? parent, Vector3 localPosition, Quaternion localRotation,
+            Vector3 localScale, List<Action<GameObject>?> callbacks)
         {
             LoadInfo loadInfo = new LoadInfo();
             loadInfo.Key = address;
 
+#if UNITY_6000_3_OR_NEWER
+#else
             Action<GameObject> loadDoneAction = (obj) => {
                 GameObject gameObject = Instantiate(obj, parent, false);
                 gameObject.transform.localPosition = localPosition;
@@ -271,13 +275,14 @@ namespace Unity.HLODSystem.Streaming
                     callback?.Invoke(gameObject);
                 }
             };
+#endif // UNITY_6000_3_OR_NEWER
 
             if (m_customLoader == null)
             {
                 loadInfo.LoadFromCustom = false;
                 loadInfo.Handle = Addressables.LoadAssetAsync<GameObject>(address);
 #if UNITY_6000_3_OR_NEWER
-                _ = LoadDoneAction(loadInfo.Handle, loadInfo, m_hlodLayerIndex,
+                _ = LoadDoneActionAsync(loadInfo.Handle, loadInfo, m_hlodLayerIndex,
                     parent, localPosition, localRotation,
                     localScale, callbacks, destroyCancellationToken);
 #else
@@ -296,29 +301,65 @@ namespace Unity.HLODSystem.Streaming
             else
             {
                 loadInfo.LoadFromCustom = true;
+#if UNITY_6000_3_OR_NEWER
+                void LoadDoneAction(GameObject obj)
+                {
+                    GameObject gameObject = Instantiate(obj, parent, false);
+                    var t = gameObject.transform;
+                    t.SetLocalPositionAndRotation(localPosition, localRotation);
+                    t.localScale = localScale;
+                    gameObject.SetActive(false);
+                    ChangeLayersRecursively(t, m_hlodLayerIndex);
+
+                    loadInfo.Instance = gameObject;
+                    foreach (var callback in callbacks)
+                    {
+                        callback?.Invoke(gameObject);
+                    }
+                }
+                m_customLoader.CustomLoad(address, LoadDoneAction);
+#else
                 m_customLoader.CustomLoad(address, loadDoneAction);
+#endif // UNITY_6000_3_OR_NEWER
             }            
 
             return loadInfo;
         }
 		
 #if UNITY_6000_3_OR_NEWER
-        private static async Awaitable LoadDoneAction(
+        private static async Awaitable LoadDoneActionAsync(
             AsyncOperationHandle<GameObject> handle, LoadInfo loadInfo, int m_hlodLayerIndex,
-            Transform parent, Vector3 localPosition, Quaternion localRotation,
-            Vector3 localScale, List<Action<GameObject>> callbacks,
+            Transform? parent, Vector3 localPosition, Quaternion localRotation,
+            Vector3 localScale, List<Action<GameObject>?> callbacks,
             System.Threading.CancellationToken ct)
         {
+            bool endOfFrame = false;
             while (!ct.IsCancellationRequested && !handle.IsDone)
             {
-                await Awaitable.NextFrameAsync();
+                endOfFrame = !endOfFrame;
+                if (endOfFrame)
+                    await Awaitable.EndOfFrameAsync();
+                else
+                    await Awaitable.NextFrameAsync();
             }
 
-            if (handle.Status != AsyncOperationStatus.Succeeded)
+            if (ct.IsCancellationRequested || handle.Status != AsyncOperationStatus.Succeeded)
                 return;
 
-            var result = await InstantiateAsync(handle.Result, new InstantiateParameters
+            GameObject handleResult = handle.Result;
+            handleResult.SetActive(false);
+            var aio = InstantiateAsync(handleResult, new InstantiateParameters
                 { parent = parent, worldSpace = false, originalImmutable = true, });
+            while (!ct.IsCancellationRequested && !aio.isDone)
+            {
+                endOfFrame = !endOfFrame;
+                if (endOfFrame)
+                    await Awaitable.EndOfFrameAsync();
+                else
+                    await Awaitable.NextFrameAsync();
+            }
+            
+            var result = aio.Result;
             if (ct.IsCancellationRequested || result == null || result.Length == 0 || result[0] == null)
                 return;
 
@@ -326,7 +367,6 @@ namespace Unity.HLODSystem.Streaming
             var t = gameObject.transform;
             t.SetLocalPositionAndRotation(localPosition, localRotation);
             t.localScale = localScale;
-            gameObject.SetActive(false);
             ChangeLayersRecursively(t, m_hlodLayerIndex);
 
             loadInfo.Instance = gameObject;
@@ -345,24 +385,17 @@ namespace Unity.HLODSystem.Streaming
             }
             else
             {
-                m_customLoader.CustomUnload(info.Key);
+                m_customLoader?.CustomUnload(info.Key);
             }
         }
 
         static void ChangeLayersRecursively(Transform trans, int layer)
         {
             trans.gameObject.layer = layer;
-#if OPTIMISATION_UNITY
-            for (int i = 0, childCount = trans.childCount; i < childCount; i++)
-            {
-                ChangeLayersRecursively(trans.GetChild(i), layer);
-            }
-#else
             foreach (Transform child in trans)
             {
                 ChangeLayersRecursively(child, layer);
             }
-#endif // OPTIMISATION_UNITY
         }
     }
 }

@@ -11,10 +11,11 @@ namespace Unity.HLODSystem.Utils
     {
         //It must order by child first.
         //Because we need to make child prefab first.
-        public static List<T> GetComponentsInChildren<T>(GameObject root) where T : Component
+        public static List<T> GetComponentsInChildren<T>(GameObject root,
+            Queue<GameObject> queue, List<T> components) where T : Component
         {
             LinkedList<T> result = new LinkedList<T>();
-            Queue<GameObject> queue = new Queue<GameObject>();
+            queue.Clear();
             queue.Enqueue(root);
 
             while (queue.Count > 0)
@@ -30,18 +31,26 @@ namespace Unity.HLODSystem.Utils
                 }
             }
 
-            return result.ToList();
+            components.AddRange(result);
+            return components;
         }
 
-        public static List<GameObject> HLODTargets(GameObject root)
+        public static List<GameObject> HLODTargets(GameObject root,
+            List<GameObject> HLODTargets)
         {
-            List<GameObject> targets = new List<GameObject>();
+            var targets = UnityEngine.Pool.ListPool<GameObject>.Get();
 
-            List<HLODMeshSetter> meshSetters = GetComponentsInChildren<HLODMeshSetter>(root);
-            List<LODGroup> lodGroups = GetComponentsInChildren<LODGroup>(root);
+            List<HLODMeshSetter> meshSetters = UnityEngine.Pool.ListPool<HLODMeshSetter>.Get();
+            List<LODGroup> lodGroups = UnityEngine.Pool.ListPool<LODGroup>.Get();
+            List<MeshRenderer> meshRenderers = UnityEngine.Pool.ListPool<MeshRenderer>.Get();
+            Queue<GameObject> queue = new Queue<GameObject>();
+            _ = GetComponentsInChildren<HLODMeshSetter>(root, queue, meshSetters);
+            _ = GetComponentsInChildren<LODGroup>(root, queue, lodGroups);
             //This contains all of the mesh renderers, so we need to remove the duplicated mesh renderer which in the LODGroup.
-            List<MeshRenderer> meshRenderers = GetComponentsInChildren<MeshRenderer>(root);
+            _ = GetComponentsInChildren<MeshRenderer>(root, queue, meshRenderers);
 
+            var lg = UnityEngine.Pool.ListPool<LODGroup>.Get();
+            var mr = UnityEngine.Pool.ListPool<MeshRenderer>.Get();
             for (int mi = 0; mi < meshSetters.Count; ++mi)
             {
                 if (meshSetters[mi].enabled == false)
@@ -51,9 +60,16 @@ namespace Unity.HLODSystem.Utils
                 
                 targets.Add(meshSetters[mi].gameObject);
 
-                lodGroups.RemoveAll(meshSetters[mi].GetComponentsInChildren<LODGroup>());
-                meshRenderers.RemoveAll(meshSetters[mi].GetComponentsInChildren<MeshRenderer>());
+                lg.Clear();
+                mr.Clear();
+                meshSetters[mi].GetComponentsInChildren<LODGroup>(lg);
+                meshSetters[mi].GetComponentsInChildren<MeshRenderer>(mr);
+                lodGroups.RemoveAll(lg);
+                meshRenderers.RemoveAll(mr);
             }
+            
+            UnityEngine.Pool.ListPool<LODGroup>.Release(lg);
+            UnityEngine.Pool.ListPool<HLODMeshSetter>.Release(meshSetters);
 
             for (int i = 0; i < lodGroups.Count; ++i)
             {
@@ -64,8 +80,13 @@ namespace Unity.HLODSystem.Utils
 
                 targets.Add(lodGroups[i].gameObject);
 
-                meshRenderers.RemoveAll(lodGroups[i].GetComponentsInChildren<MeshRenderer>());
+                mr.Clear();
+                lodGroups[i].GetComponentsInChildren<MeshRenderer>(mr);
+                meshRenderers.RemoveAll(mr);
             }
+            
+            UnityEngine.Pool.ListPool<MeshRenderer>.Release(mr);
+            UnityEngine.Pool.ListPool<LODGroup>.Release(lodGroups);
 
             //Combine renderer which in the LODGroup and renderer which without the LODGroup.
             for (int ri = 0; ri < meshRenderers.Count; ++ri)
@@ -78,16 +99,21 @@ namespace Unity.HLODSystem.Utils
                 targets.Add(meshRenderers[ri].gameObject);
             }
             
+            UnityEngine.Pool.ListPool<MeshRenderer>.Release(meshRenderers);
+            
             //Combine several LODGroups and MeshRenderers belonging to Prefab into one.
             //Since the minimum unit of streaming is Prefab, it must be set to the minimum unit.
-            HashSet<GameObject> targetsByPrefab = new HashSet<GameObject>();
+            var targetsByPrefab = UnityEngine.Pool.HashSetPool<GameObject>.Get();
             for (int ti = 0; ti < targets.Count; ++ti)
             {
                 var targetPrefab = GetCandidatePrefabRoot(root, targets[ti]);
                 targetsByPrefab.Add(targetPrefab);
             }
 
-            return targetsByPrefab.ToList();
+            HLODTargets.AddRange(targetsByPrefab);
+            UnityEngine.Pool.HashSetPool<GameObject>.Release(targetsByPrefab);
+            UnityEngine.Pool.ListPool<GameObject>.Release(targets);
+            return HLODTargets;
         }
 
         //This is finding nearest prefab root from the HLODRoot.
@@ -121,7 +147,7 @@ namespace Unity.HLODSystem.Utils
         
         
         
-        public static T CopyComponent<T>(T original, GameObject destination) where T : Component
+        public static T? CopyComponent<T>(T original, GameObject destination) where T : Component
         {
             System.Type type = original.GetType();
             Component copy = destination.AddComponent(type);
@@ -157,9 +183,10 @@ namespace Unity.HLODSystem.Utils
             return path;
         }
 
+        private static readonly char[] splitChars = {'[', ']'};
         public static void ParseObjectPath(string path, out string mainPath, out string subAssetName)
         {
-            string[] splittedStr = path.Split('[', ']');
+            string[] splittedStr = path.Split(splitChars);
             mainPath = splittedStr[0];
             if (splittedStr.Length > 1)
             {
@@ -167,7 +194,7 @@ namespace Unity.HLODSystem.Utils
             }
             else
             {
-                subAssetName = null;
+                subAssetName = string.Empty;
             }
         }
 

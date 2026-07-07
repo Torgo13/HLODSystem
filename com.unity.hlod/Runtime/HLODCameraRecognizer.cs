@@ -3,10 +3,11 @@ using UnityEngine;
 
 namespace Unity.HLODSystem
 {
+    [RequireComponent(typeof(Camera))]
     public class HLODCameraRecognizer : MonoBehaviour
     {
-        private Camera m_recognizedCamera;
-        public Camera RecognizedCamera => m_recognizedCamera;
+        private Camera? m_recognizedCamera;
+        public Camera? RecognizedCamera => m_recognizedCamera;
 
         [SerializeField]
         private int m_id;

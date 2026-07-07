@@ -16,13 +16,13 @@ namespace Unity.HLODSystem
         //exiting -> entering -> exited -> entered
         class Functions
         {
-            public Action EnteringFunction;
-            public Func<bool> IsReadyToEnterFunction;
-            public Action EnteredFunction;
+            public Action? EnteringFunction;
+            public Func<bool>? IsReadyToEnterFunction;
+            public Action? EnteredFunction;
 
-            public Action ExitingFunction;
-            public Func<bool> IsReadyToExitFunction;
-            public Action ExitedFunction;
+            public Action? ExitingFunction;
+            public Func<bool>? IsReadyToExitFunction;
+            public Action? ExitedFunction;
         }
 
         private Dictionary<T, Functions> m_functions = new Dictionary<T, Functions>();

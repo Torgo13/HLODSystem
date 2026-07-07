@@ -10,7 +10,7 @@ namespace Unity.HLODSystem
     {
 #if UNITY_EDITOR
         #region Singleton
-        private static HLODTreeNodeRenderer s_instance;
+        private static HLODTreeNodeRenderer? s_instance;
 
         public static HLODTreeNodeRenderer Instance
         {
@@ -24,7 +24,7 @@ namespace Unity.HLODSystem
         #endregion
         private Vector3[] m_allocatedVertices = new Vector3[8];
         #region public
-        public void Render(HLODTreeNode node, Color color, float width)
+        public void Render(HLODTreeNode? node, Color color, float width)
         {
             if (node == null || node.Controller == null)
                 return;

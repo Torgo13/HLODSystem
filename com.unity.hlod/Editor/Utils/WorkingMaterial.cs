@@ -43,9 +43,9 @@ namespace Unity.HLODSystem.Utils
 
 
 
-        private WorkingMaterial()
+        private WorkingMaterial(WorkingMaterialBuffer buffer)
         {
-            
+            m_buffer = buffer;
         }
         public WorkingMaterial(Allocator allocator, Material mat)
         {
@@ -59,8 +59,7 @@ namespace Unity.HLODSystem.Utils
 
         public WorkingMaterial Clone()
         {
-             WorkingMaterial nwm = new WorkingMaterial();
-             nwm.m_buffer = m_buffer;
+             WorkingMaterial nwm = new WorkingMaterial(m_buffer);
              nwm.m_buffer.AddRef();
 
              return nwm;
@@ -86,7 +85,7 @@ namespace Unity.HLODSystem.Utils
         {
             m_buffer.SetTexture(name, texture);
         }
-        public WorkingTexture GetTexture(string name)
+        public WorkingTexture? GetTexture(string name)
         {
             return m_buffer.GetTexture(name);
         }
@@ -104,7 +103,10 @@ namespace Unity.HLODSystem.Utils
         public void Dispose()
         {
             m_buffer.Release();
+#if OPTIMISATION_NULL
+#else
             m_buffer = null;
+#endif // OPTIMISATION_NULL
             
             m_detector.Dispose();
         }
@@ -113,7 +115,7 @@ namespace Unity.HLODSystem.Utils
     
     public class WorkingMaterialBufferManager
     {
-        private static WorkingMaterialBufferManager s_instance;
+        private static WorkingMaterialBufferManager? s_instance;
         public static WorkingMaterialBufferManager Instance
         {
             get
@@ -134,7 +136,7 @@ namespace Unity.HLODSystem.Utils
 #endif // BUGFIX
         public WorkingMaterialBuffer Get(Allocator allocator, Material material)
         {
-            WorkingMaterialBuffer buffer = null;
+            WorkingMaterialBuffer buffer;
             string guid = "";
             long localId = 0;
             if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(material, out guid, out localId) == false)
@@ -181,7 +183,7 @@ namespace Unity.HLODSystem.Utils
         private int m_refCount;
         
         private Allocator m_allocator;
-        private string m_name;
+        private string m_name = string.Empty;
         private string m_guid;
         private int m_instanceID;
         private DisposableDictionary<string, WorkingTexture> m_textures;
@@ -233,7 +235,7 @@ namespace Unity.HLODSystem.Utils
             string[] names = mat.GetTexturePropertyNames();
             for (int i = 0; i < names.Length; ++i)
             {
-                Texture2D texture = mat.GetTexture(names[i]) as Texture2D;
+                Texture2D? texture = mat.GetTexture(names[i]) as Texture2D;
                 if (texture == null)
                     continue;
                     
@@ -331,7 +333,7 @@ namespace Unity.HLODSystem.Utils
                 m_textures[name] = texture;
             }
         }
-        public WorkingTexture GetTexture(string name)
+        public WorkingTexture? GetTexture(string name)
         {
             lock (m_textures)
             {
@@ -358,9 +360,9 @@ namespace Unity.HLODSystem.Utils
         public Material ToMaterial()
         {
 #if UNITY_6000_3_OR_NEWER
-            Material mat = EditorUtility.EntityIdToObject(m_instanceID) as Material;
+            Material? mat = EditorUtility.EntityIdToObject(m_instanceID) as Material;
 #else
-            Material mat = EditorUtility.InstanceIDToObject(m_instanceID) as Material;
+            Material? mat = EditorUtility.InstanceIDToObject(m_instanceID) as Material;
 #endif // UNITY_6000_3_OR_NEWER
             
             if (mat == null)

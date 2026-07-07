@@ -17,11 +17,11 @@ namespace Unity.HLODSystem
         public static class Styles
         {
             public static GUIContent SourceText = new GUIContent("Source");
-            public static GUIContent DestoryTerrainText = new GUIContent("Destroy terrain", "Destory original terrain when build time.");
+            public static GUIContent DestoryTerrainText = new GUIContent("Destroy terrain", "Destroy original terrain when build time.");
             public static GUIContent GenerateButtonEnable = new GUIContent("Generate", "Generate a HLOD mesh.");
             public static GUIContent GenerateButtonExists = new GUIContent("Generate", "HLOD already generated.");
             public static GUIContent DestroyButtonEnable = new GUIContent("Destroy", "Destroy a HLOD mesh.");
-            public static GUIContent DestroyButtonNotExists = new GUIContent("Destroy", "You need to generate HLOD before the destroy.");
+            public static GUIContent DestroyButtonNotExists = new GUIContent("Destroy", "You need to generate HLOD before calling destroy.");
             
             public static int[] TextureSizes = new int[]
             {
@@ -43,6 +43,7 @@ namespace Unity.HLODSystem
             }
         }        
         
+#nullable disable
         private SerializedProperty m_TerrainDataProperty;
         private SerializedProperty m_DestoryTerrainProperty;
         private SerializedProperty m_ChunkSizeProperty;
@@ -57,6 +58,7 @@ namespace Unity.HLODSystem
         private string[] m_StreamingNames;
         
         private LODSlider m_LODSlider;
+#nullable enable
         
         private bool isShowCommon = true;
         private bool isShowSimplifier = true;
@@ -92,7 +94,7 @@ namespace Unity.HLODSystem
             serializedObject.Update();
             EditorGUI.BeginChangeCheck();
             
-            TerrainHLOD hlod = target as TerrainHLOD;
+            TerrainHLOD? hlod = target as TerrainHLOD;
             if (hlod == null)
             {
                 EditorGUILayout.LabelField("TerrainHLOD is null.");
@@ -153,7 +155,7 @@ namespace Unity.HLODSystem
             isShowMaterial = EditorGUILayout.BeginFoldoutHeaderGroup(isShowMaterial, "Material");
             if (isShowMaterial == true)
             {
-                Material mat = null;
+                Material? mat = null;
                 string matGUID = hlod.MaterialGUID;
                 if (string.IsNullOrEmpty(matGUID) == false)
                 {

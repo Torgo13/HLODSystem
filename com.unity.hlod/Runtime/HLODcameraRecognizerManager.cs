@@ -5,7 +5,7 @@ namespace Unity.HLODSystem
 {
     public class HLODCameraRecognizerManager
     {
-        private static HLODCameraRecognizerManager s_instance; 
+        private static HLODCameraRecognizerManager? s_instance; 
         public static HLODCameraRecognizerManager Instance
         {
             get
@@ -16,7 +16,7 @@ namespace Unity.HLODSystem
             }
         }
 
-        public static HLODCameraRecognizer ActiveRecognizer
+        public static HLODCameraRecognizer? ActiveRecognizer
         {
             get
             {
@@ -29,7 +29,7 @@ namespace Unity.HLODSystem
                 return instance.m_activeRecognizer;
             }
         }
-        public static Camera ActiveCamera
+        public static Camera? ActiveCamera
         {
             get
             {
@@ -42,13 +42,13 @@ namespace Unity.HLODSystem
         }
 
         private bool m_enableAutoHighestPrioritySetting = true;
-        private HLODCameraRecognizer m_activeRecognizer = null;
+        private HLODCameraRecognizer? m_activeRecognizer = null;
         private List<HLODCameraRecognizer> m_recognizers = new List<HLODCameraRecognizer>();
         
         public void RegisterRecognizer(HLODCameraRecognizer recognizer)
         {
             m_recognizers.Add(recognizer);
-            m_recognizers.Sort((lhs, rhs) =>
+            m_recognizers.Sort(static (lhs, rhs) =>
             {
                 //sort in descending order
                 return rhs.Priority - lhs.Priority;

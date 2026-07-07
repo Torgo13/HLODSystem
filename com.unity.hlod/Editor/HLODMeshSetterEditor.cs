@@ -42,7 +42,8 @@ namespace Unity.HLODSystem
             }
             private void DrawHeaderCallback(Rect rect)
             {
-                EditorGUI.LabelField(rect, styles.meshRenderersHeader);
+                if (styles != null)
+                    EditorGUI.LabelField(rect, styles.meshRenderersHeader);
             }
             private void DrawElementCallback(Rect rect, int index, bool isactive, bool isfocused)
             {
@@ -103,15 +104,16 @@ namespace Unity.HLODSystem
             }
         }
 
-        private static Styles styles;
+        private static Styles? styles;
         
+#nullable disable
         private SerializedProperty m_meshSettingsProperty;
         private SerializedProperty m_removeAtBuildProperty;
         
         private ReorderableList m_meshSettingList;
 
         private List<MeshGroupUI> m_meshSettingGroupList;
-
+#nullable enable
 
         private void OnEnable()
         {
@@ -132,7 +134,10 @@ namespace Unity.HLODSystem
 
         private void ResetMeshGroup()
         {
-            m_meshSettingGroupList = new List<MeshGroupUI>();
+            if (m_meshSettingGroupList == null)
+                m_meshSettingGroupList = new List<MeshGroupUI>();
+            else
+                m_meshSettingGroupList.Clear();
 
             for (int i = 0; i < m_meshSettingsProperty.arraySize; ++i)
             {
@@ -156,7 +161,8 @@ namespace Unity.HLODSystem
  
         private void DrawHeaderMeshSetting(Rect rect)
         {
-            GUI.Label(rect, styles.meshSettingHeader);
+            if (styles != null)
+                GUI.Label(rect, styles.meshSettingHeader);
         }
         private void DrawElementMeshSetting(Rect rect, int index, bool isactive, bool isfocused)
         {

@@ -20,11 +20,11 @@ namespace Unity.HLODSystem.Simplifier
         {
         }
 
-        protected override IEnumerator GetSimplifiedMesh(Utils.WorkingMesh origin, float quality, Action<Utils.WorkingMesh> resultCallback)
+        protected override IEnumerator GetSimplifiedMesh(Utils.WorkingMesh origin, float quality, Action<Utils.WorkingMesh>? resultCallback)
         {
-#if OPTIMISATION
+#if USING_COLLECTIONS
             using
-#endif // OPTIMISATION
+#endif // USING_COLLECTIONS
             var meshSimplifier = new global::UnityMeshSimplifier.MeshSimplifier();
             meshSimplifier.Vertices = origin.vertices;
             meshSimplifier.Normals = origin.normals;
@@ -45,27 +45,17 @@ namespace Unity.HLODSystem.Simplifier
 
             meshSimplifier.SimplifyMesh(quality);
 
+            var subMeshIndices = new System.Collections.Generic.List<int>();
             int triCount = 0;
             for (int i = 0; i < meshSimplifier.SubMeshCount; ++i)
             {
-                triCount += meshSimplifier.GetSubMeshTriangles(i).Length;
+                triCount += meshSimplifier.GetSubMeshTriangles(i, subMeshIndices).Count;
             }
 
-#if OPTIMISATION
-            Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent,
-                meshSimplifier.Vertices, meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
-                meshSimplifier.UV1, meshSimplifier.UV2, meshSimplifier.UV3, meshSimplifier.UV4,
-                meshSimplifier.ColorsSpan, triCount, meshSimplifier.SubMeshCount, maxBindposes: 0);
+            var vertices = meshSimplifier.Vertices;
+            Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent, vertices.Length, triCount, meshSimplifier.SubMeshCount, 0);
             nwm.name = origin.name;
-            nwm.subMeshCount = meshSimplifier.SubMeshCount;
-            for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
-            {
-                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh), submesh);
-            }
-#else
-            Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent, meshSimplifier.Vertices.Length, triCount, meshSimplifier.SubMeshCount, 0);
-            nwm.name = origin.name;
-            nwm.vertices = meshSimplifier.Vertices;
+            nwm.vertices = vertices;
             nwm.normals = meshSimplifier.Normals;
             nwm.tangents = meshSimplifier.Tangents;
             nwm.uv = meshSimplifier.UV1;
@@ -74,11 +64,11 @@ namespace Unity.HLODSystem.Simplifier
             nwm.uv4 = meshSimplifier.UV4;
             nwm.colors = meshSimplifier.Colors;
             nwm.subMeshCount = meshSimplifier.SubMeshCount;
+            subMeshIndices.Clear();
             for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
             {
-                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh), submesh);
+                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh, subMeshIndices), submesh);
             }
-#endif // OPTIMISATION
 
             if (resultCallback != null)
             {

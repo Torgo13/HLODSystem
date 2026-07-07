@@ -22,24 +22,24 @@ namespace Unity.HLODSystem
         [SerializeField]
         private float m_MinObjectSize = 0.0f;
 
-        private Type m_SpaceSplitterType;
-        private Type m_BatcherType;
-        private Type m_SimplifierType;
-        private Type m_StreamingType;
-        private Type m_UserDataSerializerType;
+        private Type? m_SpaceSplitterType;
+        private Type? m_BatcherType;
+        private Type? m_SimplifierType;
+        private Type? m_StreamingType;
+        private Type? m_UserDataSerializerType;
 
 
         [SerializeField] 
-        private string m_SpaceSplitterTypeStr;
+        private string m_SpaceSplitterTypeStr = string.Empty;
         [SerializeField]
-        private string m_BatcherTypeStr;        //< unity serializer is not support serialization with System.Type
+        private string m_BatcherTypeStr = string.Empty; //< unity serializer is not support serialization with System.Type
                                                 //< So, we should convert to string to store value.
         [SerializeField]
-        private string m_SimplifierTypeStr;
+        private string m_SimplifierTypeStr = string.Empty;
         [SerializeField]
-        private string m_StreamingTypeStr;
+        private string m_StreamingTypeStr = string.Empty;
         [SerializeField]
-        private string m_UserDataSerializerTypeStr;
+        private string m_UserDataSerializerTypeStr = string.Empty;
 
         [SerializeField]
         private SerializableDynamicObject m_SpaceSplitterOptions = new SerializableDynamicObject();
@@ -71,31 +71,31 @@ namespace Unity.HLODSystem
             get { return m_CullDistance; }
         }
 
-        public Type SpaceSplitterType
+        public Type? SpaceSplitterType
         {
             set { m_SpaceSplitterType = value; }
             get { return m_SpaceSplitterType; }
         }
 
-        public Type BatcherType
+        public Type? BatcherType
         {
             set { m_BatcherType = value; }
             get { return m_BatcherType; }
         }
 
-        public Type SimplifierType
+        public Type? SimplifierType
         {
             set { m_SimplifierType = value; }
             get { return m_SimplifierType; }
         }
 
-        public Type StreamingType
+        public Type? StreamingType
         {
             set { m_StreamingType = value; }
             get { return m_StreamingType; }
         }
 
-        public Type UserDataSerializerType
+        public Type? UserDataSerializerType
         {
             set { m_UserDataSerializerType = value; }
             get { return m_UserDataSerializerType; }
@@ -138,10 +138,9 @@ namespace Unity.HLODSystem
             get { return m_convertedPrefabObjects; }
         }
 
-        public List<HLODControllerBase> GetHLODControllerBases()
+        public List<HLODControllerBase> GetHLODControllerBases(
+            List<HLODControllerBase> controllerBases)
         {
-            List<HLODControllerBase> controllerBases = new List<HLODControllerBase>();
-
             foreach (Object obj in m_generatedObjects)
             {
                 var controllerBase = obj as HLODControllerBase;
@@ -149,7 +148,7 @@ namespace Unity.HLODSystem
                     controllerBases.Add(controllerBase);
             }
             
-            //if controller base doesn't exists in the generated objects, it was created from old version.
+            //if controller base doesn't exist in the generated objects, it was created from old version.
             //so adding controller base manually.
             if (controllerBases.Count == 0)
             {
@@ -161,12 +160,16 @@ namespace Unity.HLODSystem
             }
             return controllerBases;
         }
-#endif
-        public Bounds GetBounds()
+        
+        public Bounds GetBounds(List<Renderer>? renderers = null)
         {
             Bounds ret = new Bounds();
-            var renderers = GetComponentsInChildren<Renderer>();
-            if (renderers.Length == 0)
+            if (renderers == null)
+                renderers = new List<Renderer>();
+            else
+                renderers.Clear();
+            GetComponentsInChildren<Renderer>(renderers);
+            if (renderers.Count == 0)
             {
                 ret.center = Vector3.zero;
                 ret.size = Vector3.zero;
@@ -174,7 +177,7 @@ namespace Unity.HLODSystem
             }
 
             Bounds bounds = Utils.BoundsUtils.CalcLocalBounds(renderers[0], transform);
-            for (int i = 1; i < renderers.Length; ++i)
+            for (int i = 1; i < renderers.Count; ++i)
             {
                 bounds.Encapsulate(Utils.BoundsUtils.CalcLocalBounds(renderers[i], transform));
             }
@@ -185,21 +188,20 @@ namespace Unity.HLODSystem
 
             return ret;
         }
-
-    
+#endif
 
         public void OnBeforeSerialize()
         {
             if (m_SpaceSplitterType != null)
-                m_SpaceSplitterTypeStr = m_SpaceSplitterType.AssemblyQualifiedName;
+                m_SpaceSplitterTypeStr = m_SpaceSplitterType.AssemblyQualifiedName!;
             if ( m_BatcherType != null )
-                m_BatcherTypeStr = m_BatcherType.AssemblyQualifiedName;
+                m_BatcherTypeStr = m_BatcherType.AssemblyQualifiedName!;
             if (m_SimplifierType != null)
-                m_SimplifierTypeStr = m_SimplifierType.AssemblyQualifiedName;
+                m_SimplifierTypeStr = m_SimplifierType.AssemblyQualifiedName!;
             if (m_StreamingType != null)
-                m_StreamingTypeStr = m_StreamingType.AssemblyQualifiedName;
+                m_StreamingTypeStr = m_StreamingType.AssemblyQualifiedName!;
             if (m_UserDataSerializerType != null)
-                m_UserDataSerializerTypeStr = m_UserDataSerializerType.AssemblyQualifiedName;
+                m_UserDataSerializerTypeStr = m_UserDataSerializerType.AssemblyQualifiedName!;
         }
 
         public void OnAfterDeserialize()

@@ -53,7 +53,7 @@ namespace Unity.HLODSystem.Utils
             m_list.CopyTo(array, arrayIndex);
         }
 
-        public bool Remove(T item)
+        public bool Remove(T? item)
         {
             if (item != null)
             {

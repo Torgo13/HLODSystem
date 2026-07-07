@@ -20,7 +20,7 @@ namespace Unity.HLODSystem
         class SerializeItem<T> : ISerializeItem
         {
             [SerializeField]
-            public string Name;
+            public string Name = string.Empty;
             [SerializeField]
             public T Data;
 
@@ -49,15 +49,15 @@ namespace Unity.HLODSystem
         class JsonSerializedData
         {
             [SerializeField]
-            public string Type;
+            public string Type = string.Empty;
             [SerializeField]
-            public string Data;
+            public string Data = string.Empty;
         }
 
         [SerializeField]
         private List<JsonSerializedData> m_SerializeItems = new List<JsonSerializedData>();
 
-        private Dictionary<string, object> m_DynamicContext = new Dictionary<string, object>();
+        private Dictionary<string, object?> m_DynamicContext = new Dictionary<string, object?>();
 
         public bool ContainsKey(string key)
         {            
@@ -66,19 +66,12 @@ namespace Unity.HLODSystem
 
         public override bool TrySetMember(SetMemberBinder binder, object value)
         {
-            if (m_DynamicContext.ContainsKey(binder.Name) == false)
-            {
-                m_DynamicContext.Add(binder.Name, value);
-            }
-            else
-            {
-                m_DynamicContext[binder.Name] = value;
-            }
+            m_DynamicContext[binder.Name] = value;
 
             return true;
         }
 
-        public override bool TryGetMember(GetMemberBinder binder, out object result)
+        public override bool TryGetMember(GetMemberBinder binder, out object? result)
         {
             if (m_DynamicContext.TryGetValue(binder.Name, out result) == false)
             {
@@ -102,17 +95,17 @@ namespace Unity.HLODSystem
                 Type genericClass = typeof(SerializeItem<>);
                 Type constructedClass = genericClass.MakeGenericType(pair.Value.GetType());
 
-                ISerializeItem item = Activator.CreateInstance(constructedClass) as ISerializeItem;
+                ISerializeItem? item = Activator.CreateInstance(constructedClass) as ISerializeItem;
                 if (item == null)
                     continue;
 
                 var methodInfo = constructedClass.GetMethod("SetData");
-                methodInfo.Invoke(item, new object[]{pair.Value});
+                methodInfo?.Invoke(item, new object[]{pair.Value});
 
                 item.SetName(pair.Key);
 
                 JsonSerializedData data = new JsonSerializedData();
-                data.Type = item.GetType().AssemblyQualifiedName;
+                data.Type = item.GetType().AssemblyQualifiedName!;
                 data.Data = JsonUtility.ToJson(item);
 
                 m_SerializeItems.Add(data);
@@ -129,7 +122,7 @@ namespace Unity.HLODSystem
                 if (string.IsNullOrEmpty(m_SerializeItems[i].Type))
                     continue;
 
-                Type type = Type.GetType(m_SerializeItems[i].Type);
+                Type? type = Type.GetType(m_SerializeItems[i].Type);
                 if (type == null)
                     continue;
 

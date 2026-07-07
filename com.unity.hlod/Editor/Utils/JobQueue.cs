@@ -34,7 +34,7 @@ namespace Unity.HLODSystem.Utils
             }
         }
 
-        private Action DequeueMainThreadJob()
+        private Action? DequeueMainThreadJob()
         {
             lock (m_mainThreadJobs)
             {
@@ -43,7 +43,7 @@ namespace Unity.HLODSystem.Utils
                 return m_mainThreadJobs.Dequeue();
             }
         }
-        private Action DequeueJob()
+        private Action? DequeueJob()
         {
             lock (m_jobs)
             {
@@ -62,7 +62,7 @@ namespace Unity.HLODSystem.Utils
             {
                 while (true)
                 {
-                    Action mainThreadJob = DequeueMainThreadJob();
+                    Action? mainThreadJob = DequeueMainThreadJob();
                     if (mainThreadJob == null)
                         break;
                     mainThreadJob.Invoke();
@@ -100,7 +100,10 @@ namespace Unity.HLODSystem.Utils
             {
                 m_workers[i].Stop();
             }
+#if OPTIMISATION_NULL
+#else
             m_workers = null;
+#endif // OPTIMISATION_NULL
         }
 
         private Worker[] m_workers;
@@ -153,7 +156,7 @@ namespace Unity.HLODSystem.Utils
                     try
                     {
                         m_working = true;
-                        Action job = m_queue.DequeueJob();
+                        Action? job = m_queue.DequeueJob();
                         if (job == null)
                         {
                             m_working = false;

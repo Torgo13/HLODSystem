@@ -46,7 +46,7 @@ namespace Unity.HLODSystem
             m_createdMaterials.Dispose();
         }
 
-        public void Batch(Transform rootTransform, DisposableList<HLODBuildInfo> targets, Action<float> onProgress)
+        public void Batch(Transform rootTransform, DisposableList<HLODBuildInfo> targets, Action<float>? onProgress)
         {
             dynamic options = m_batcherOptions;
             if (onProgress != null)
@@ -86,7 +86,7 @@ namespace Unity.HLODSystem
                 m_textureInfoList = options.TextureInfoList;
                 m_textureCache = new DisposableDictionary<string, TexturePacker.MaterialTexture>();
             }
-            public TexturePacker.MaterialTexture GetMaterialTextures(WorkingMaterial material)
+            public TexturePacker.MaterialTexture? GetMaterialTextures(WorkingMaterial material)
             {
                 if (m_textureCache.ContainsKey(material.Guid) == false)
                 {
@@ -114,7 +114,7 @@ namespace Unity.HLODSystem
             private void AddToCache(WorkingMaterial material)
             {
                 string inputName = m_textureInfoList[0].InputName;
-                WorkingTexture texture = material.GetTexture(inputName);
+                WorkingTexture? texture = material.GetTexture(inputName);
 
                 if (texture == null)
                 {
@@ -141,7 +141,7 @@ namespace Unity.HLODSystem
                 for (int ti = 1; ti < m_textureInfoList.Count; ++ti)
                 {
                     string input = m_textureInfoList[ti].InputName;
-                    WorkingTexture tex = material.GetTexture(input);
+                    WorkingTexture? tex = material.GetTexture(input);
 
                     if (tex == null)
                     {
@@ -225,10 +225,12 @@ namespace Unity.HLODSystem
             if ( onProgress != null) onProgress(0.3f);
 
             int index = 1;
-            var atlases = packer.GetAllAtlases();
+            var atlases = packer.Atlases;
+            using var _0 = UnityEngine.Pool.DictionaryPool<string, WorkingTexture>.Get(out var workingTextures);
             foreach (var atlas in atlases)
             {
-                Dictionary<string, WorkingTexture> textures = new Dictionary<string, WorkingTexture>();
+                workingTextures.Clear();
+                _ = workingTextures.EnsureCapacity(atlas.Textures.Count);
                 for (int i = 0; i < atlas.Textures.Count; ++i)
                 {
                     WorkingTexture wt = atlas.Textures[i];
@@ -238,10 +240,10 @@ namespace Unity.HLODSystem
                         wt.Linear = true;
                     }
 
-                    textures.Add(textureInfoList[i].OutputName, wt);
+                    workingTextures.Add(textureInfoList[i].OutputName, wt);
                 }
                 
-                WorkingMaterial mat = CreateMaterial(options.MaterialGUID, textures);
+                WorkingMaterial mat = CreateMaterial(options.MaterialGUID, workingTextures);
                 mat.Name = "CombinedMaterial " + index;
                 m_createdMaterials.Add(atlas, mat);
                 index += 1;
@@ -250,7 +252,7 @@ namespace Unity.HLODSystem
 
         static WorkingMaterial CreateMaterial(string guidstr, Dictionary<string, WorkingTexture> textures)
         {
-            WorkingMaterial material = null;
+            WorkingMaterial? material = null;
             string path = AssetDatabase.GUIDToAssetPath(guidstr);
             if (string.IsNullOrEmpty(path) == false)
             {
@@ -281,12 +283,14 @@ namespace Unity.HLODSystem
                 return;
 
             List<TextureInfo> textureInfoList = options.TextureInfoList;
-            List<MeshCombiner.CombineInfo> combineInfos = new List<MeshCombiner.CombineInfo>();
+            using var _0 = UnityEngine.Pool.ListPool<MeshCombiner.CombineInfo>.Get(out var combineInfos);
             var hlodWorldToLocal = rootTransform.worldToLocalMatrix;
 
             for (int i = 0; i < info.WorkingObjects.Count; ++i)
             {
-                var obj = info.WorkingObjects[i]; 
+                var obj = info.WorkingObjects[i];
+                if (obj.Mesh == null)
+                    continue;
                 ConvertMesh(obj.Mesh, obj.Materials, atlas, textureInfoList[0].InputName);
 
                 for (int si = 0; si < obj.Mesh.subMeshCount; ++si)
@@ -323,16 +327,16 @@ namespace Unity.HLODSystem
             info.WorkingObjects.Add(newObj);
         }
 
-
+        static
         private void ConvertMesh(WorkingMesh mesh, DisposableList<WorkingMaterial> materials, TexturePacker.TextureAtlas atlas, string mainTextureName)
         {
-            var uv = mesh.uv;
+            var uv = mesh.UV;
             var updated = new bool[uv.Length];
             // Some meshes have submeshes that either aren't expected to render or are missing a material, so go ahead and skip
             int subMeshCount = Mathf.Min(mesh.subMeshCount, materials.Count);
             for (int mi = 0; mi < subMeshCount; ++mi)
             {
-                int[] indices = mesh.GetTriangles(mi);
+                var indices = mesh.GetTrianglesNative(mi);
                 foreach (var i in indices)
                 {
                     if ( updated[i] == false )
@@ -360,8 +364,6 @@ namespace Unity.HLODSystem
                 }
                 
             }
-
-            mesh.uv = uv;
         }
 
 
@@ -412,8 +414,8 @@ namespace Unity.HLODSystem
             }
         }
 
-        private static string[] inputTexturePropertyNames = null;
-        private static string[] outputTexturePropertyNames = null;
+        private static string[]? inputTexturePropertyNames = null;
+        private static string[]? outputTexturePropertyNames = null;
         private static TextureInfo addingTextureInfo = new TextureInfo();
         public static void OnGUI(HLOD hlod, bool isFirst)
         {
@@ -451,7 +453,7 @@ namespace Unity.HLODSystem
             batcherOptions.PackTextureSize = EditorGUILayout.IntPopup("Pack texture size", batcherOptions.PackTextureSize, Styles.PackTextureSizeNames, Styles.PackTextureSizes);
             batcherOptions.LimitTextureSize = EditorGUILayout.IntPopup("Limit texture size", batcherOptions.LimitTextureSize, Styles.LimitTextureSizeNames, Styles.LimitTextureSizes);
 
-            Material mat = null;
+            Material? mat = null;
 
             string matGUID = batcherOptions.MaterialGUID;
             string path = "";
@@ -585,7 +587,7 @@ namespace Unity.HLODSystem
             EditorGUI.indentLevel -= 1;
         }
 
-        static string StringPopup(string select, string[] options)
+        static string StringPopup(string select, string[]? options)
         {
             if (options == null || options.Length == 0)
             {
@@ -603,12 +605,16 @@ namespace Unity.HLODSystem
 
         static string[] GetAllMaterialTextureProperties(GameObject root)
         {
-            var meshRenderers = root.GetComponentsInChildren<MeshRenderer>();
-            HashSet<string> texturePropertyNames = new HashSet<string>();
-            for (int m = 0; m < meshRenderers.Length; ++m)
+            using var _0 = UnityEngine.Pool.ListPool<MeshRenderer>.Get(out var meshRenderers);
+            root.GetComponentsInChildren<MeshRenderer>(meshRenderers);
+            using var _1 = UnityEngine.Pool.HashSetPool<string>.Get(out var texturePropertyNames);
+            using var _2 = UnityEngine.Pool.ListPool<Material>.Get(out var sharedMaterials);
+            for (int m = 0, meshRenderersCount = meshRenderers.Count; m < meshRenderersCount; ++m)
             {
                 var mesh = meshRenderers[m];
-                foreach (Material material in mesh.sharedMaterials)
+                sharedMaterials.Clear();
+                mesh.GetSharedMaterials(sharedMaterials);
+                foreach (Material material in sharedMaterials)
                 {
                     var names = material.GetTexturePropertyNames();
                     for (int n = 0; n < names.Length; ++n)

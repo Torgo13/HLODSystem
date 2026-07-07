@@ -15,7 +15,7 @@ namespace Unity.HLODSystem.SpaceManager
         }
 
         private Bounds m_bounds;
-        private SpaceNode m_parentNode;
+        private SpaceNode? m_parentNode;
         private List<SpaceNode> m_childTreeNodes = new List<SpaceNode>(); 
         private List<GameObject> m_objcets = new List<GameObject>();
         
@@ -30,7 +30,7 @@ namespace Unity.HLODSystem.SpaceManager
             get { return m_objcets; }
         }
 
-        public SpaceNode ParentNode
+        public SpaceNode? ParentNode
         {
             set
             {

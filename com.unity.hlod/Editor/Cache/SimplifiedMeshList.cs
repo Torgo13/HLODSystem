@@ -8,7 +8,7 @@ namespace Unity.HLODSystem.Cache
     class SimplifiedMesh
     {
         public float Quality;
-        public string SimplifierType;
+        public string SimplifierType = string.Empty;
         public Mesh Mesh;
     }
 
@@ -23,12 +23,12 @@ namespace Unity.HLODSystem.Cache
             m_MeshList.Add(new SimplifiedMesh()
             {
                 Quality = quality,
-                SimplifierType = simplifierType.AssemblyQualifiedName,
+                SimplifierType = simplifierType.AssemblyQualifiedName!,
                 Mesh = mesh,
             });
         }
 
-        public SimplifiedMesh GetMesh(float quality, Type simplifierType)
+        public SimplifiedMesh? GetMesh(float quality, Type simplifierType)
         {
             //Compare three decimal places
             int compareQuality = (int)(quality * 1000.0f + 0.5f);

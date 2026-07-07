@@ -14,9 +14,9 @@ namespace Unity.HLODSystem
     {
         #region Singleton
 
-        private static HLODManager s_instance = null;
+        private static HLODManager? s_instance = null;
 #if UNITY_6000_3_OR_NEWER
-        private bool IsSRP => GraphicsSettings.defaultRenderPipeline != null || QualitySettings.renderPipeline != null;
+        private static bool IsSRP => GraphicsSettings.defaultRenderPipeline != null || QualitySettings.renderPipeline != null;
 #else
         private bool IsSRP => GraphicsSettings.renderPipelineAsset != null || QualitySettings.renderPipeline != null;
 #endif // UNITY_6000_3_OR_NEWER
@@ -61,7 +61,7 @@ namespace Unity.HLODSystem
         
         
 
-        private List<HLODControllerBase> m_activeControllers = null;
+        private List<HLODControllerBase>? m_activeControllers = null;
 
         private void OnPreCull(ScriptableRenderContext context, Camera cam)
         {
@@ -88,9 +88,7 @@ namespace Unity.HLODSystem
                 return;
 #endif
 
-            if (m_activeControllers == null)
-                return;
-
+            var m_activeControllers = ActiveControllers;
             for (int i = 0; i < m_activeControllers.Count; ++i)
             {
                 m_activeControllers[i].UpdateCull(cam);

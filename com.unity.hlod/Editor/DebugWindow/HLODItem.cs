@@ -17,7 +17,7 @@ namespace Unity.HLODSystem.DebugWindow
         private static readonly string s_uxmlGuid = "a3d94d4fe01e43d4eb8f2fc24c533851";
 
         private HLODDebugWindow m_window;
-        private HLODItemData m_data;
+        private HLODItemData? m_data;
 
         private ListView m_hierarchyView;
         private List<HierarchyItem> m_hierarchyItems = new List<HierarchyItem>();
@@ -85,11 +85,15 @@ namespace Unity.HLODSystem.DebugWindow
         public void UpdateList()
         {
             var view = m_hierarchyView.hierarchy[0] as ScrollView;
+            if (view == null)
+                return;
             view.Clear();
 
             for ( int i = 0; i < m_hierarchyItems.Count;)
             {
                 var item = m_hierarchyItems[i];
+                if (item.Data == null)
+                    continue;
                 view.Add(item);
                 if (item.Data.IsOpen)
                 {
@@ -101,6 +105,8 @@ namespace Unity.HLODSystem.DebugWindow
                     for (i = i+1; i < m_hierarchyItems.Count; ++i)
                     {
                         var nextItem = m_hierarchyItems[i];
+                        if (nextItem.Data == null || item.Data.TreeNode == null || nextItem.Data.TreeNode == null)
+                            continue;
                         if (item.Data.TreeNode.Level >= nextItem.Data.TreeNode.Level)
                             break;
                     }

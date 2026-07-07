@@ -14,17 +14,10 @@ namespace Unity.HLODSystem
 
         public void SetRootObject(string name, GameObject gameObject)
         {
-            if (m_rootObjects.ContainsKey(name) == false)
-            {
-                m_rootObjects.Add(name, gameObject);
-            }
-            else
-            {
-                m_rootObjects[name] = gameObject;
-            }
+            m_rootObjects[name] = gameObject;
         }
 
-        public  GameObject GetRootObject(String name)
+        public GameObject? GetRootObject(string name)
         {
             GameObject go;
             if (m_rootObjects.TryGetValue(name, out go))

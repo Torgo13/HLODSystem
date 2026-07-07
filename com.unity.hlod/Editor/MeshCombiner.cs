@@ -18,6 +18,50 @@ namespace Unity.HLODSystem
         }
         public WorkingMesh CombineMesh(Allocator allocator, List<CombineInfo> infos)
         {
+            var remappers = UnityEngine.Pool.ListPool<Dictionary<int, int>>.Get();
+            var vertices = UnityEngine.Pool.ListPool<Vector3>.Get();
+            var normals = UnityEngine.Pool.ListPool<Vector3>.Get();
+            var tangents = UnityEngine.Pool.ListPool<Vector4>.Get();
+            var uv1s = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv2s = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv3s = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv4s = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var colors = UnityEngine.Pool.ListPool<Color>.Get();
+            var triangles = UnityEngine.Pool.ListPool<int>.Get();
+
+            var mesh = CombineMesh(allocator, infos, remappers, vertices, normals, tangents,
+                uv1s, uv2s, uv3s, uv4s, colors, triangles);
+                
+            UnityEngine.Pool.ListPool<Dictionary<int, int>>.Release(remappers);
+            UnityEngine.Pool.ListPool<Vector3>.Release(vertices);
+            UnityEngine.Pool.ListPool<Vector3>.Release(normals);
+            UnityEngine.Pool.ListPool<Vector4>.Release(tangents);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv1s);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv2s);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv3s);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv4s);
+            UnityEngine.Pool.ListPool<Color>.Release(colors);
+            UnityEngine.Pool.ListPool<int>.Release(triangles);
+
+            return mesh;
+        }
+        
+        public WorkingMesh CombineMesh(Allocator allocator, List<CombineInfo> infos,
+            List<Dictionary<int, int>> remappers, List<Vector3> vertices, List<Vector3> normals, List<Vector4> tangents,
+            List<Vector2> uv1s, List<Vector2> uv2s, List<Vector2> uv3s, List<Vector2> uv4s,
+            List<Color> colors, List<int> triangles)
+        {
+            remappers.Clear();
+            vertices.Clear();
+            normals.Clear();
+            tangents.Clear();
+            uv1s.Clear();
+            uv2s.Clear();
+            uv3s.Clear();
+            uv4s.Clear();
+            colors.Clear();
+            triangles.Clear();
+            
             //I didn't consider animation mesh combine.
             int verticesCount = 0;
             int normalCount = 0;
@@ -29,12 +73,13 @@ namespace Unity.HLODSystem
             int colorCount = 0;
 
             int trianglesCount = 0;
-            
-            List<Dictionary<int,int>> remappers = new List<Dictionary<int, int>>(infos.Count);
+
+            if (remappers.Capacity < infos.Count)
+                remappers.Capacity = infos.Count;
             
             for (int i = 0; i < infos.Count; ++i)
             {
-                int[] meshIndices = infos[i].Mesh.GetTriangles(infos[i].MeshIndex);
+                var meshIndices = infos[i].Mesh.GetTrianglesNative(infos[i].MeshIndex);
                 Dictionary<int, int> remapper = CalculateMeshRemap(meshIndices);
 
                 verticesCount += (infos[i].Mesh.vertices.Length > 0) ? remapper.Count : 0;
@@ -52,17 +97,6 @@ namespace Unity.HLODSystem
             }
             
             WorkingMesh combinedMesh = new WorkingMesh(allocator, verticesCount, trianglesCount, 1, 0);
-            
-            List<Vector3> vertices = new List<Vector3>(verticesCount);
-            List<Vector3> normals = new List<Vector3>(verticesCount);
-            List<Vector4> tangents = new List<Vector4>(verticesCount);
-            List<Vector2> uv1s = new List<Vector2>(verticesCount);
-            List<Vector2> uv2s = new List<Vector2>(verticesCount);
-            List<Vector2> uv3s = new List<Vector2>(verticesCount);
-            List<Vector2> uv4s = new List<Vector2>(verticesCount);
-            List<Color> colors = new List<Color>(colorCount);
-            
-            List<int> triangles = new List<int>(trianglesCount);
 
             for (int i = 0; i < infos.Count; ++i)
             {
@@ -130,7 +164,7 @@ namespace Unity.HLODSystem
             return combinedMesh;
         }
         
-        private void FillBuffer<T>(ref List<T> buffer, T[] source, Dictionary<int,int> remapper, T defaultValue)
+        private void FillBuffer<T>(ref List<T> buffer, T[]? source, Dictionary<int,int> remapper, T defaultValue)
         { 
             int startIndex = buffer.Count;
             buffer.AddRange(Enumerable.Repeat(defaultValue, remapper.Count));
@@ -159,7 +193,7 @@ namespace Unity.HLODSystem
         
         //first original index
         //second new index
-        private Dictionary<int, int> CalculateMeshRemap(int[] indices)
+        private static Dictionary<int, int> CalculateMeshRemap(System.ReadOnlySpan<int> indices)
         {
             Dictionary<int, int> remapper = new Dictionary<int, int>();
 

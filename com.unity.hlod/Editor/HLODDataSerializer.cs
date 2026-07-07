@@ -14,7 +14,7 @@ namespace Unity.HLODSystem
         public static HLODData Read(Stream stream)
         {
             BinaryFormatter formatter = new BinaryFormatter();
-            return formatter.Deserialize(stream) as HLODData;
+            return (HLODData)formatter.Deserialize(stream);
         }
     }
 }

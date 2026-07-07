@@ -79,11 +79,23 @@ namespace Unity.HLODSystem
             {
                 DisposableList<WorkingObject> combinedObjects = new DisposableList<WorkingObject>();
                 info.WorkingObjects = combinedObjects;
+                
+                var remappers = UnityEngine.Pool.ListPool<Dictionary<int, int>>.Get();
+                var vertices = UnityEngine.Pool.ListPool<Vector3>.Get();
+                var normals = UnityEngine.Pool.ListPool<Vector3>.Get();
+                var tangents = UnityEngine.Pool.ListPool<Vector4>.Get();
+                var uv1s = UnityEngine.Pool.ListPool<Vector2>.Get();
+                var uv2s = UnityEngine.Pool.ListPool<Vector2>.Get();
+                var uv3s = UnityEngine.Pool.ListPool<Vector2>.Get();
+                var uv4s = UnityEngine.Pool.ListPool<Vector2>.Get();
+                var colors = UnityEngine.Pool.ListPool<Color>.Get();
+                var triangles = UnityEngine.Pool.ListPool<int>.Get();
 
                 MeshCombiner combiner = new MeshCombiner();
                 foreach (var pair in combineInfos)
                 {
-                    WorkingMesh combinedMesh = combiner.CombineMesh(Allocator.Persistent, pair.Value);
+                    WorkingMesh combinedMesh = combiner.CombineMesh(Allocator.Persistent, pair.Value,
+                        remappers, vertices, normals, tangents, uv1s, uv2s, uv3s, uv4s, colors, triangles);
                     WorkingObject combinedObject = new WorkingObject(Allocator.Persistent);
                     WorkingMaterial material = materialTable[pair.Key].Clone();
 
@@ -94,6 +106,17 @@ namespace Unity.HLODSystem
 
                     combinedObjects.Add(combinedObject);
                 }
+                
+                UnityEngine.Pool.ListPool<Dictionary<int, int>>.Release(remappers);
+                UnityEngine.Pool.ListPool<Vector3>.Release(vertices);
+                UnityEngine.Pool.ListPool<Vector3>.Release(normals);
+                UnityEngine.Pool.ListPool<Vector4>.Release(tangents);
+                UnityEngine.Pool.ListPool<Vector2>.Release(uv1s);
+                UnityEngine.Pool.ListPool<Vector2>.Release(uv2s);
+                UnityEngine.Pool.ListPool<Vector2>.Release(uv3s);
+                UnityEngine.Pool.ListPool<Vector2>.Release(uv4s);
+                UnityEngine.Pool.ListPool<Color>.Release(colors);
+                UnityEngine.Pool.ListPool<int>.Release(triangles);
             }
         }
 

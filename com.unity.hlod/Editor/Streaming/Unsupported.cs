@@ -72,7 +72,7 @@ namespace Unity.HLODSystem.Streaming
         }
 
         public void Build(SpaceNode rootNode, DisposableList<HLODBuildInfo> infos, GameObject root, 
-            float cullDistance, float lodDistance, bool writeNoPrefab, bool extractMaterial, Action<float> onProgress)
+            float cullDistance, float lodDistance, bool writeNoPrefab, bool extractMaterial, Action<float>? onProgress)
         {
             dynamic options = m_streamingOptions;
             string path = options.OutputDirectory;
@@ -154,14 +154,15 @@ namespace Unity.HLODSystem.Streaming
                 for (int oi = 0; oi < spaceNode.Objects.Count; ++oi)
                 {
                     GameObject obj = spaceNode.Objects[oi];
-                    GameObject rootGameObject = rootData.GetRootObject(obj.name);
+                    GameObject? rootGameObject = rootData.GetRootObject(obj.name);
                     if (rootGameObject != null)
                     {
-                        GameObject go = PrefabUtility.InstantiatePrefab(rootGameObject) as GameObject;
-                        go.transform.SetParent(obj.transform.parent);
-                        go.transform.localPosition = obj.transform.localPosition;
-                        go.transform.localRotation = obj.transform.localRotation;
-                        go.transform.localScale = obj.transform.localScale;
+                        var t = obj.transform;
+                        GameObject go = (GameObject)PrefabUtility.InstantiatePrefab(rootGameObject, t.parent);
+                        var goTransform = go.transform;
+                        t.GetLocalPositionAndRotation(out var pos, out var rot);
+                        goTransform.SetLocalPositionAndRotation(pos, rot);
+                        goTransform.localScale = t.localScale;
 
                         int highId = defaultController.AddHighObject(go);
                         hlodTreeNode.HighObjectIds.Add(highId);
@@ -184,15 +185,14 @@ namespace Unity.HLODSystem.Streaming
 
                 if ( infos[ii].WorkingObjects.Count > 0 )
                 {
-                    GameObject prefab = rootData.GetRootObject(infos[ii].Name);
+                    GameObject? prefab = rootData.GetRootObject(infos[ii].Name);
                     if (prefab == null)
                     {
                         Debug.LogError("Prefab not found: " + infos[ii].Name);
                     }
                     else
                     {
-                        GameObject go = PrefabUtility.InstantiatePrefab(prefab) as GameObject;
-                        go.transform.SetParent(hlodRoot.transform, false);
+                        GameObject go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, hlodRoot.transform);
                         go.SetActive(false);
                         int lowId = defaultController.AddLowObject(go);
                         hlodTreeNode.LowObjectIds.Add(lowId);
@@ -303,6 +303,7 @@ namespace Unity.HLODSystem.Streaming
             spaceNodes.Enqueue(rootNode);
             levels.Enqueue(0);
 
+            using var _0 = UnityEngine.Pool.ListPool<HLODTreeNode>.Get(out var childTreeNodes);
             while (hlodTreeNodes.Count > 0)
             {
                 var hlodTreeNode = hlodTreeNodes.Dequeue();
@@ -315,7 +316,10 @@ namespace Unity.HLODSystem.Streaming
                 hlodTreeNode.Bounds = spaceNode.Bounds;
                 if (spaceNode.HasChild())
                 {
-                    List<HLODTreeNode> childTreeNodes = new List<HLODTreeNode>(spaceNode.GetChildCount());
+                    childTreeNodes.Clear();
+                    int capacity = spaceNode.GetChildCount();
+                    if (childTreeNodes.Capacity < capacity)
+                        childTreeNodes.Capacity = capacity;
                     for (int i = 0; i < spaceNode.GetChildCount(); ++i)
                     {
                         var treeNode = new HLODTreeNode();

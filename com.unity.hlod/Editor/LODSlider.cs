@@ -33,13 +33,13 @@ namespace Unity.HLODSystem
             }
         }
 
-        private static GUIStyles s_Styles;
+        private static GUIStyles? s_Styles;
 
         
         private int m_SliderID = typeof(LODSlider).GetHashCode();
 
         private int m_SelectedIndex = -1;
-        private LODSliderRange m_DefaultRange = null;
+        private LODSliderRange? m_DefaultRange = null;
 
         private List<LODSliderRange> m_RangeList = new List<LODSliderRange>();
         
@@ -164,7 +164,7 @@ namespace Unity.HLODSystem
 
                         if (m_RangeList[m_SelectedIndex].Property != null)
                         {
-                            m_RangeList[m_SelectedIndex].Property.floatValue = percentage;
+                            m_RangeList[m_SelectedIndex].Property!.floatValue = percentage;
                         }
                         GUI.changed = true;
                     }

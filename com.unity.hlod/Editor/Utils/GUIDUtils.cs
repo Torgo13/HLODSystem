@@ -21,7 +21,7 @@ namespace Unity.HLODSystem.Utils
             return AssetDatabase.LoadAssetAtPath<T>(path);
         }
 
-        public static T FindObject<T>(Object[] objectList, string name) where T : Object
+        public static T? FindObject<T>(Object[] objectList, string name) where T : Object
         {
             for (int i = 0; i < objectList.Length; ++i)
             {

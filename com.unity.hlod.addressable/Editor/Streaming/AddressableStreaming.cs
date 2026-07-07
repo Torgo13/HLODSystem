@@ -77,7 +77,7 @@ namespace Unity.HLODSystem.Streaming
         }
         
         public void Build(SpaceNode rootNode, DisposableList<HLODBuildInfo> infos, GameObject root, 
-            float cullDistance, float lodDistance, bool writeNoPrefab, bool extractMaterial, Action<float> onProgress)
+            float cullDistance, float lodDistance, bool writeNoPrefab, bool extractMaterial, Action<float>? onProgress)
         {
             dynamic options = m_streamingOptions;
             string path = options.OutputDirectory;
@@ -200,18 +200,19 @@ namespace Unity.HLODSystem.Streaming
                     {
 
 
-                        GameObject rootGameObject = null;
+                        GameObject? rootGameObject = null;
                         
                         if ( rootDatas.ContainsKey(i))
                             rootGameObject = rootDatas[i].GetRootObject(obj.name);
 
                         if (rootGameObject != null)
                         {
-                            GameObject go = PrefabUtility.InstantiatePrefab(rootGameObject) as GameObject;
-                            go.transform.SetParent(obj.transform.parent);
-                            go.transform.localPosition = obj.transform.localPosition;
-                            go.transform.localRotation = obj.transform.localRotation;
-                            go.transform.localScale = obj.transform.localScale;
+                            var objTransform = obj.transform;
+                            GameObject go = (GameObject)PrefabUtility.InstantiatePrefab(rootGameObject, objTransform.parent);
+                            objTransform.GetLocalPositionAndRotation(out var pos, out var rot);
+                            var t = go.transform;
+                            t.SetLocalPositionAndRotation(pos, rot);
+                            t.localScale = objTransform.localScale;
 
                             if (m_manager.IsGeneratedResource(obj))
                                 m_manager.AddGeneratedResource(go);
@@ -384,6 +385,7 @@ namespace Unity.HLODSystem.Streaming
             spaceNodes.Enqueue(rootNode);
             levels.Enqueue(0);
 
+            using var _0 = UnityEngine.Pool.ListPool<HLODTreeNode>.Get(out var childTreeNodes);
             while (hlodTreeNodes.Count > 0)
             {
                 var hlodTreeNode = hlodTreeNodes.Dequeue();
@@ -396,7 +398,10 @@ namespace Unity.HLODSystem.Streaming
                 hlodTreeNode.Bounds = spaceNode.Bounds;
                 if (spaceNode.HasChild() == true)
                 {
-                    List<HLODTreeNode> childTreeNodes = new List<HLODTreeNode>(spaceNode.GetChildCount());
+                    childTreeNodes.Clear();
+                    int capacity = spaceNode.GetChildCount();
+                    if (childTreeNodes.Capacity < capacity)
+                        childTreeNodes.Capacity = capacity;
                     for (int i = 0; i < spaceNode.GetChildCount(); ++i)
                     {
                         var treeNode = new HLODTreeNode();
@@ -540,7 +545,7 @@ namespace Unity.HLODSystem.Streaming
             Object[] objects = AssetDatabase.LoadAllAssetsAtPath(path);
             for (int i = 0; i < objects.Length; ++i)
             {
-                Material mat = objects[i] as Material;
+                Material? mat = objects[i] as Material;
 
                 if (mat == null)
                     continue;
@@ -565,7 +570,7 @@ namespace Unity.HLODSystem.Streaming
             settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, entriesAdded, true);
         }
 
-        private string GetAddress(Object obj)
+        private string? GetAddress(Object obj)
         {
             if (AddressableAssetSettingsDefaultObject.Settings == null)
             {
@@ -639,8 +644,8 @@ namespace Unity.HLODSystem.Streaming
                 if (settings.groups[i].Name == groupName)
                     return settings.groups[i];
             }
-            
-            List<AddressableAssetGroupSchema> schemas = new List<AddressableAssetGroupSchema>();
+
+            using var _0 = UnityEngine.Pool.ListPool<AddressableAssetGroupSchema>.Get(out var schemas);
 
             ContentUpdateGroupSchema contentUpdateGroupSchema = ScriptableObject.CreateInstance<ContentUpdateGroupSchema>();
             BundledAssetGroupSchema bundledAssetGroupSchema = ScriptableObject.CreateInstance<BundledAssetGroupSchema>();

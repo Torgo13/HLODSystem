@@ -49,13 +49,13 @@ namespace Unity.HLODSystem.Utils
             get => m_buffer.WrapMode;
         }
         
-        private WorkingTexture()
+        private WorkingTexture(WorkingTextureBuffer buffer)
         {
-            
+            m_buffer = buffer;
         }
         public WorkingTexture(Allocator allocator, TextureFormat format, int width, int height, bool linear)
         {
-            m_buffer = WorkingTextureBufferManager.Instance.Create(allocator, format, width, height, linear);
+            m_buffer = WorkingTextureBufferManager.Create(allocator, format, width, height, linear);
         }
 
         public WorkingTexture(Allocator allocator, Texture2D source)
@@ -66,15 +66,17 @@ namespace Unity.HLODSystem.Utils
         public void Dispose()
         {
             m_buffer.Release();
+#if OPTIMISATION_NULL
+#else
             m_buffer = null;
+#endif // OPTIMISATION_NULL
 
             m_detector.Dispose();
         }
 
         public WorkingTexture Clone()
         {
-            WorkingTexture nwt = new WorkingTexture();
-            nwt.m_buffer = m_buffer;
+            WorkingTexture nwt = new WorkingTexture(m_buffer);
             nwt.m_buffer.AddRef();
 
             return nwt;
@@ -166,7 +168,7 @@ namespace Unity.HLODSystem.Utils
         {
             if (m_buffer.GetRefCount() > 1)
             {
-                WorkingTextureBuffer newBuffer = WorkingTextureBufferManager.Instance.Clone(m_buffer);
+                WorkingTextureBuffer newBuffer = WorkingTextureBufferManager.Clone(m_buffer);
                 m_buffer.Release();
                 m_buffer = newBuffer;
             }
@@ -175,7 +177,7 @@ namespace Unity.HLODSystem.Utils
 
     public class WorkingTextureBufferManager
     {
-        private static WorkingTextureBufferManager s_instance;
+        private static WorkingTextureBufferManager? s_instance;
         public static WorkingTextureBufferManager Instance
         {
             get
@@ -196,13 +198,7 @@ namespace Unity.HLODSystem.Utils
 #endif // BUGFIX
         public WorkingTextureBuffer Get(Allocator allocator, Texture2D texture)
         {
-            WorkingTextureBuffer buffer = null;
-            if (m_cache.ContainsKey(texture) == true)
-            {
-                buffer = m_cache[texture];
-                
-            }
-            else
+            if (!m_cache.TryGetValue(texture, out WorkingTextureBuffer buffer))
             {
                 buffer = new WorkingTextureBuffer(allocator, texture);
                 m_cache.Add(texture, buffer);
@@ -211,6 +207,7 @@ namespace Unity.HLODSystem.Utils
             return buffer;
         }
 
+        static
         public WorkingTextureBuffer Create(Allocator allocator, TextureFormat format, int width, int height, bool linear)
         {
             WorkingTextureBuffer buffer = new WorkingTextureBuffer(allocator, format, width, height, linear);
@@ -218,6 +215,7 @@ namespace Unity.HLODSystem.Utils
             return buffer;
         }
 
+        static
         public WorkingTextureBuffer Clone(WorkingTextureBuffer buffer)
         {
             WorkingTextureBuffer nb = buffer.Clone();
@@ -227,9 +225,9 @@ namespace Unity.HLODSystem.Utils
 
         public void Destroy(WorkingTextureBuffer buffer)
         {
-            if (buffer.HasSource())
+            if (buffer.HasSource(out var source))
             {
-                m_cache.Remove(buffer.GetSource());
+                m_cache.Remove(source);
             }
         }
     }
@@ -245,13 +243,14 @@ namespace Unity.HLODSystem.Utils
         private NativeArray<Color> m_pixels;
         
         private int m_refCount;
-        private Texture2D m_source;
+        private Texture2D? m_source;
 
         private Guid m_guid;
         
         private TextureWrapMode m_wrapMode = TextureWrapMode.Repeat;
 
-        public string Name { set; get; }
+        private string name = string.Empty;
+        public string Name { get => name; set => name = value; }
 
         public TextureFormat Format => m_format;
         public int Widht => m_width;
@@ -312,11 +311,13 @@ namespace Unity.HLODSystem.Utils
             return m_guid;
         }
 
-        public bool HasSource()
+        public bool HasSource(
+            [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Texture2D? source)
         {
+            source = m_source;
             return m_source != null;
         }
-        public Texture2D GetSource()
+        public Texture2D? GetSource()
         {
             return m_source;
         }

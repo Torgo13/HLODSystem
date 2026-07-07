@@ -20,7 +20,7 @@ namespace Unity.HLODSystem
             }
         }
 
-        private static GUIStyles s_Styles;
+        private static GUIStyles? s_Styles;
 
         private static GUIStyles Styles
         {
@@ -32,8 +32,8 @@ namespace Unity.HLODSystem
             }
         }
 
-        public string Name { set; get; }
-        public SerializedProperty Property { set; get; }
+        public string? Name { set; get; }
+        public SerializedProperty? Property { set; get; }
 
         public float EndPosition
         {

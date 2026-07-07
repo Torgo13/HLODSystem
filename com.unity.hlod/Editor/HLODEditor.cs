@@ -26,7 +26,8 @@ namespace Unity.HLODSystem
                 BlueTextColor.normal.textColor = new Color(0.4f, 0.5f, 1.0f);
             }
 
-        }        
+        }
+#nullable disable
         private SerializedProperty m_ChunkSizeProperty;
         private SerializedProperty m_LODDistanceProperty;
         private SerializedProperty m_CullDistanceProperty;
@@ -48,6 +49,7 @@ namespace Unity.HLODSystem
 
         private Type[] m_UserDataSerializerTypes;
         private string[] m_UserDataSerializerNames;
+#nullable enable
 
         private bool isShowCommon = true;
         private bool isShowSpaceSplitter = true;
@@ -58,7 +60,7 @@ namespace Unity.HLODSystem
 
         private bool isFirstOnGUI = true;
         
-        private ISpaceSplitter m_splitter;
+        private ISpaceSplitter? m_splitter;
 
         [InitializeOnLoadMethod]
         static void InitTagTagUtils()
@@ -104,7 +106,7 @@ namespace Unity.HLODSystem
             serializedObject.Update();
             EditorGUI.BeginChangeCheck();
 
-            HLOD hlod = target as HLOD;
+            HLOD? hlod = target as HLOD;
             if (hlod == null)
             {
                 EditorGUILayout.LabelField("HLOD is null.");

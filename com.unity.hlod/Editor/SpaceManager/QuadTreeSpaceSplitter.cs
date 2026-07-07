@@ -33,7 +33,7 @@ namespace Unity.HLODSystem.SpaceManager
         private float m_subHLODTreeSize;
         
 
-        public QuadTreeSpaceSplitter(SerializableDynamicObject spaceSplitterOptions)
+        public QuadTreeSpaceSplitter(SerializableDynamicObject? spaceSplitterOptions)
         {
             m_looseSizeFromOptions = 0.0f;
 
@@ -60,7 +60,8 @@ namespace Unity.HLODSystem.SpaceManager
             if (m_useSubHLODTree == false)
                 return 1;
             
-            List<Bounds> splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
+            using var _0 = UnityEngine.Pool.ListPool<Bounds>.Get(out var splittedBounds);
+            _ = SplitBounds(bounds, m_subHLODTreeSize, splittedBounds);
             return splittedBounds.Count;
         }
 
@@ -69,7 +70,8 @@ namespace Unity.HLODSystem.SpaceManager
             float maxLength = 0.0f;
             if (m_useSubHLODTree)
             {
-                List<Bounds> splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
+                using var _0 = UnityEngine.Pool.ListPool<Bounds>.Get(out var splittedBounds);
+                _ = SplitBounds(bounds, m_subHLODTreeSize, splittedBounds);
                 if (splittedBounds.Count > 0)
                 {
                     maxLength = Mathf.Max(splittedBounds[0].extents.x, splittedBounds[0].extents.z);
@@ -96,22 +98,26 @@ namespace Unity.HLODSystem.SpaceManager
         }
 
         public List<SpaceNode> CreateSpaceTree(Bounds initBounds, float chunkSize, Transform transform,
-            List<GameObject> targetObjects, Action<float> onProgress)
+            List<GameObject>? targetObjects, Action<float>? onProgress)
         {
+            using var _0 = UnityEngine.Pool.ListPool<TargetInfo>.Get(out var targetInfos);
             List<SpaceNode> nodes = new List<SpaceNode>();
-            List<TargetInfo> targetInfos = CreateTargetInfoList(targetObjects, transform);
+            _ = CreateTargetInfoList(targetObjects, transform, targetInfos);
 
             if (m_useSubHLODTree == true)
             {
-                List<Bounds> splittedBounds = SplitBounds(initBounds, m_subHLODTreeSize);
-                List<List<TargetInfo>> splittedTargetInfos = SplitTargetObjects(targetInfos, splittedBounds);
+                using var _1 = UnityEngine.Pool.ListPool<Bounds>.Get(out var splittedBounds);
+                _ = SplitBounds(initBounds, m_subHLODTreeSize, splittedBounds);
+                using var _2 = UnityEngine.Pool.ListPool<List<TargetInfo>>.Get(out var splittedTargetInfos);
+                _ = SplitTargetObjects(targetInfos, splittedBounds, splittedTargetInfos);
 
                 float progressSize = 1.0f / splittedTargetInfos.Count; 
                 for (int i = 0; i < splittedTargetInfos.Count; ++i)
                 {
+                    int i1 = i;
                     nodes.Add(CreateSpaceTreeImpl(splittedBounds[i], chunkSize, splittedTargetInfos[i], (p =>
                     {
-                        float startProgress = i * progressSize;
+                        float startProgress = i1 * progressSize;
                         onProgress?.Invoke(startProgress + p * progressSize);
                     })));
                 }
@@ -123,7 +129,7 @@ namespace Unity.HLODSystem.SpaceManager
 
             return nodes;
         }
-        private SpaceNode CreateSpaceTreeImpl(Bounds initBounds, float chunkSize, List<TargetInfo> targetObjects, Action<float> onProgress)
+        private SpaceNode CreateSpaceTreeImpl(Bounds initBounds, float chunkSize, List<TargetInfo> targetObjects, Action<float>? onProgress)
         {
             float looseSize = CalcLooseSize(chunkSize);
             SpaceNode rootNode = new SpaceNode();
@@ -135,22 +141,24 @@ namespace Unity.HLODSystem.SpaceManager
 			//space split first
 			Stack<SpaceNode> nodeStack = new Stack<SpaceNode>();
 			nodeStack.Push(rootNode);
-		
-			while(nodeStack.Count > 0 )
-			{
-				SpaceNode node = nodeStack.Pop();
-				if ( node.Bounds.size.x > chunkSize )
-				{
-                    List<SpaceNode> childNodes = CreateChildSpaceNodes(node, looseSize);
+
+            using var _0 = UnityEngine.Pool.ListPool<SpaceNode>.Get(out var childNodes);
+            while(nodeStack.Count > 0 )
+            {
+                SpaceNode node = nodeStack.Pop();
+                if ( node.Bounds.size.x > chunkSize )
+                {
+                    childNodes.Clear();
+                    _ = CreateChildSpaceNodes(node, looseSize, childNodes);
 					
-					for ( int i = 0; i < childNodes.Count; ++i )
+                    for ( int i = 0; i < childNodes.Count; ++i )
                     {
                         childNodes[i].ParentNode = node;
-						nodeStack.Push(childNodes[i]);
-					}
+                        nodeStack.Push(childNodes[i]);
+                    }
 						
-				}
-			}
+                }
+            }
 
             if (targetObjects == null)
                 return rootNode;
@@ -209,7 +217,8 @@ namespace Unity.HLODSystem.SpaceManager
             public Bounds Bounds;
         }
 
-        private List<TargetInfo> CreateTargetInfoList(List<GameObject> gameObjects, Transform transform)
+        private List<TargetInfo> CreateTargetInfoList(List<GameObject>? gameObjects, Transform transform,
+            List<TargetInfo> targetInfos)
         {
 #if BUGFIX
             if (gameObjects == null)
@@ -217,8 +226,6 @@ namespace Unity.HLODSystem.SpaceManager
                 return new List<TargetInfo>();
             }
 #endif // BUGFIX
-
-            List<TargetInfo> targetInfos = new List<TargetInfo>(gameObjects.Count);
 
             for (int i = 0; i < gameObjects.Count; ++i)
             {
@@ -250,7 +257,8 @@ namespace Unity.HLODSystem.SpaceManager
             return result;
         }
 
-        private List<Bounds> SplitBounds(Bounds bounds, float splitSize)
+        private static List<Bounds> SplitBounds(Bounds bounds, float splitSize,
+            List<Bounds> boundsList)
         {
             int xcount = Mathf.CeilToInt(bounds.size.x / splitSize);
             int zcount = Mathf.CeilToInt(bounds.size.z / splitSize);
@@ -258,7 +266,6 @@ namespace Unity.HLODSystem.SpaceManager
             float xsize = bounds.size.x / xcount;
             float zsize = bounds.size.z / zcount;
 
-            List<Bounds> boundsList = new List<Bounds>();
             Vector3 splitBoundSize = new Vector3(xsize, bounds.size.y, zsize);
             
             for (int z = 0; z < zcount; ++z)
@@ -277,9 +284,9 @@ namespace Unity.HLODSystem.SpaceManager
             return boundsList;
         }
 
-        private List<List<TargetInfo>> SplitTargetObjects(List<TargetInfo> targetInfoList, List<Bounds> targetBoundList)
+        private static List<List<TargetInfo>> SplitTargetObjects(List<TargetInfo> targetInfoList, List<Bounds> targetBoundList,
+            List<List<TargetInfo>> targetObjectsList)
         {
-            List<List<TargetInfo>> targetObjectsList = new List<List<TargetInfo>>();
             for (int i = 0; i < targetBoundList.Count; ++i)
             {
                 targetObjectsList.Add(new List<TargetInfo>());
@@ -310,10 +317,9 @@ namespace Unity.HLODSystem.SpaceManager
 
         
 
-        private List<SpaceNode> CreateChildSpaceNodes(SpaceNode parentNode, float looseSize)
+        private static List<SpaceNode> CreateChildSpaceNodes(SpaceNode parentNode, float looseSize,
+            List<SpaceNode> childSpaceNodes)
         {
-            List<SpaceNode> childSpaceNodes = new List<SpaceNode>(4);
-            
             float size = parentNode.Bounds.size.x;
             float extend = size * 0.5f;
             float offset = extend * 0.5f;

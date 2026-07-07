@@ -24,9 +24,12 @@ namespace Unity.HLODSystem.DebugWindow
         private ListView m_hlodItemList;
         private List<HLODItem> m_hlodItems = new List<HLODItem>();
         private List<HLODItemData> m_hlodItemDatas = new List<HLODItemData>();
-        private HierarchyItem m_selectedItem;
+        private HierarchyItem? m_selectedItem;
 
+#if OPTIMISATION_NULL
+#else
         private RadioButtonGroup m_drawModeUI;
+#endif // OPTIMISATION_NULL
 
         [SerializeField]
         private bool m_drawSelected = true;
@@ -45,7 +48,7 @@ namespace Unity.HLODSystem.DebugWindow
             
             MonoScript ms = MonoScript.FromScriptableObject(this);
             string scriptPath = AssetDatabase.GetAssetPath(ms);
-            string scriptDirectory = Path.GetDirectoryName(scriptPath);
+            string scriptDirectory = Path.GetDirectoryName(scriptPath)!;
             
             // Import UXML
             var visualTree =
@@ -66,12 +69,15 @@ namespace Unity.HLODSystem.DebugWindow
             var highlightRenderedUI = root.Q<Toggle>("HighlightRendered");
             highlightRenderedUI.Bind(serializedObject);
             
+#if OPTIMISATION_NULL
+            var
+#endif // OPTIMISATION_NULL
             m_drawModeUI = root.Q<RadioButtonGroup>("DrawMode");
             m_drawModeUI.choices = new[]
             {
-                DrawMode.None.ToString(),
-                DrawMode.RenderOnly.ToString(),
-                DrawMode.All.ToString(),
+                nameof(DrawMode.None),
+                nameof(DrawMode.RenderOnly),
+                nameof(DrawMode.All),
             };
             m_drawModeUI.Bind(serializedObject);
             
@@ -107,12 +113,14 @@ namespace Unity.HLODSystem.DebugWindow
 
             foreach (var controller in HLODManager.Instance.ActiveControllers)
             {
-                var data = new HLODItemData();
+                var data = CreateInstance<HLODItemData>();
                 data.Initialize(controller);
                 m_hlodItemDatas.Add(data);
             }
 
             var view = m_hlodItemList.hierarchy[0] as ScrollView;
+            if (view == null)
+                return;
             view.Clear();
             foreach (var data in m_hlodItemDatas)
             {
@@ -144,7 +152,7 @@ namespace Unity.HLODSystem.DebugWindow
             }
             if (m_drawSelected)
             {
-                if ( m_selectedItem != null)
+                if (m_selectedItem != null && m_selectedItem.Data != null)
                 {
                     HLODTreeNodeRenderer.Instance.Render(m_selectedItem.Data.TreeNode, Color.red, 2.0f);
                 }

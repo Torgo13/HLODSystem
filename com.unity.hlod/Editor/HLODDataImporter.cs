@@ -40,7 +40,7 @@ namespace Unity.HLODSystem
                     rootData.name = "Root";
 
                     var serializableMaterials = data.GetMaterials();
-                    var loadedMaterials = new Dictionary<string, Material>();
+                    using var _0 = UnityEngine.Pool.DictionaryPool<string, Material>.Get(out var loadedMaterials);
                     if (serializableMaterials != null)
                     {
                         for (int mi = 0; mi < serializableMaterials.Count; ++mi)
@@ -76,9 +76,9 @@ namespace Unity.HLODSystem
 
                     var serializableObjects = data.GetObjects();
                     var serializableColliders = data.GetColliders();
-                    Dictionary<string, List<GameObject>>
-                        createdGameObjects = new Dictionary<string, List<GameObject>>();
-                    Dictionary<string, GameObject> createdColliders = new Dictionary<string, GameObject>();
+                    using var _1 = UnityEngine.Pool.DictionaryPool<string, List<GameObject>>.Get(out var createdGameObjects);
+                    using var _2 = UnityEngine.Pool.DictionaryPool<string, GameObject>.Get(out var createdColliders);
+                    using var _3 = UnityEngine.Pool.ListPool<Material?>.Get(out var materials);
 
                     if (serializableObjects != null)
                     {
@@ -94,7 +94,7 @@ namespace Unity.HLODSystem
                             MeshRenderer mr = go.AddComponent<MeshRenderer>();
                             List<string> materialIds = so.GetMaterialIds();
                             List<string> materialNames = so.GetMaterialNames();
-                            List<Material> materials = new List<Material>();
+                            materials.Clear();
 
                             for (int mi = 0; mi < materialIds.Count; ++mi)
                             {
@@ -123,7 +123,7 @@ namespace Unity.HLODSystem
 
                             Mesh mesh = so.GetMesh().To();
                             mf.sharedMesh = mesh;
-                            mr.sharedMaterials = materials.ToArray();
+                            mr.SetSharedMaterials(materials);
                             mr.lightProbeUsage = so.LightProbeUsage;
 
                             ctx.AddObjectToAsset(mesh.name, mesh);

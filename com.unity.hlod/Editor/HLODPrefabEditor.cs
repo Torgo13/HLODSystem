@@ -12,14 +12,10 @@ namespace Unity.HLODSystem
         {
             public static GUIContent PrefabContent = new GUIContent("Prefab");
         }
-
-        void OnEnable()
-        {
-            
-        }
+        
         public override void OnInspectorGUI()
         {
-            HLODPrefab hlodPrefab = target as HLODPrefab;
+            HLODPrefab hlodPrefab = (HLODPrefab)target;
             GUI.enabled = hlodPrefab.enabled;
 
             using (new GUILayout.HorizontalScope())

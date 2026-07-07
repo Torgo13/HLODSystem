@@ -31,8 +31,8 @@ namespace Unity.HLODSystem
         private Dictionary<int, LoadManager.Handle> m_highObjects = new Dictionary<int, LoadManager.Handle>();
         private Dictionary<int, LoadManager.Handle> m_lowObjects = new Dictionary<int, LoadManager.Handle>();
 
-        private Dictionary<int, LoadManager.Handle> m_loadedHighObjects;
-        private Dictionary<int, LoadManager.Handle> m_loadedLowObjects;
+        private Dictionary<int, LoadManager.Handle>? m_loadedHighObjects;
+        private Dictionary<int, LoadManager.Handle>? m_loadedLowObjects;
 
         public int Level
         {
@@ -76,9 +76,9 @@ namespace Unity.HLODSystem
         private State m_expectedState = State.Release;
 
         private HLODControllerBase m_controller;
-        private UserDataSerializerBase m_userDataSerializer;
+        private UserDataSerializerBase? m_userDataSerializer;
         private ISpaceManager m_spaceManager;
-        private HLODTreeNode m_parent;
+        private HLODTreeNode? m_parent;
 
         private float m_boundsLength;
         private float m_distance;
@@ -143,7 +143,7 @@ namespace Unity.HLODSystem
         }
         
 
-        public void Initialize(HLODControllerBase controller, ISpaceManager spaceManager, HLODTreeNode parent)
+        public void Initialize(HLODControllerBase controller, ISpaceManager spaceManager, HLODTreeNode? parent)
         {
 
             for (int i = 0; i < m_childTreeNodeIds.Count; ++i)
@@ -393,7 +393,8 @@ namespace Unity.HLODSystem
         {
             foreach (var item in m_highObjects)
             {
-                item.Value.LoadedObject.SetActive(false);
+                if (item.Value.LoadedObject != null)
+                    item.Value.LoadedObject.SetActive(false);
                 m_controller.ReleaseHighObject(item.Value);
             }
             m_highObjects.Clear();
@@ -515,12 +516,14 @@ namespace Unity.HLODSystem
 
             foreach (var item in m_highObjects)
             {
-                item.Value.LoadedObject.SetActive(m_isVisibleHierarchy);
+                if (item.Value.LoadedObject != null)
+                    item.Value.LoadedObject.SetActive(m_isVisibleHierarchy);
             }
 
             foreach (var item in m_lowObjects)
             {
-                item.Value.LoadedObject.SetActive(m_isVisibleHierarchy);
+                if (item.Value.LoadedObject != null)
+                    item.Value.LoadedObject.SetActive(m_isVisibleHierarchy);
             }
         }
 

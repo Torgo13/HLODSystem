@@ -4,14 +4,11 @@ using UnityEngine;
 
 namespace Unity.HLODSystem.SpaceManager
 {
-    public class QuadTreeSpaceManager : ISpaceManager
+    public struct QuadTreeSpaceManager : ISpaceManager
     {
 
         private float preRelative;
         private Vector3 camPosition;
-        public QuadTreeSpaceManager()
-        {
-        }
         public void UpdateCamera(Transform hlodTransform, Camera cam)
         {
             if (cam.orthographic)
@@ -27,6 +24,7 @@ namespace Unity.HLODSystem.SpaceManager
             camPosition = hlodTransform.worldToLocalMatrix.MultiplyPoint(cam.transform.position);
         }
 
+        readonly
         public bool IsHigh(float lodDistance, Bounds bounds)
         {
             //float distance = 1.0f;
@@ -37,6 +35,7 @@ namespace Unity.HLODSystem.SpaceManager
             return relativeHeight > lodDistance;
         }
 
+        readonly
         public float GetDistanceSqure(Bounds bounds)
         {
             float x = bounds.center.x - camPosition.x;
@@ -46,6 +45,7 @@ namespace Unity.HLODSystem.SpaceManager
             return square;
         }
         
+        readonly
         public bool IsCull(float cullDistance, Bounds bounds)
         {
             float distance = GetDistance(bounds.center, camPosition);
@@ -54,6 +54,7 @@ namespace Unity.HLODSystem.SpaceManager
             return relativeHeight < cullDistance;
         }
 
+        static
         private float GetDistance(Vector3 boundsPos, Vector3 camPos)
         {
             float x = boundsPos.x - camPos.x;

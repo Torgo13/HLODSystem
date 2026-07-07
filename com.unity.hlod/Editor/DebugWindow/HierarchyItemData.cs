@@ -7,8 +7,8 @@ namespace Unity.HLODSystem.DebugWindow
     public class HierarchyItemData: ScriptableObject
     {
         public int Index;
-        public HLODTreeNode TreeNode;
-        public string Label;
+        public HLODTreeNode? TreeNode;
+        public string Label = string.Empty;
         public bool IsOpen;
     }
 

@@ -10,7 +10,7 @@ namespace Unity.HLODSystem
         [SerializeField] 
         private int m_targetLevel;
         [SerializeField] 
-        private List<MeshRenderer> m_meshRenderers;
+        private List<MeshRenderer> m_meshRenderers = new List<MeshRenderer>();
 
         public int TargetLevel
         {

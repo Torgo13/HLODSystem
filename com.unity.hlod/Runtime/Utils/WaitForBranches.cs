@@ -5,7 +5,7 @@ namespace Unity.HLODSystem.Utils
 {
     public class WaitForBranches : YieldInstruction
     {
-        private Action<float> m_onProgress;
+        private Action<float>? m_onProgress;
         public WaitForBranches(Action<float> onProgress)
         {
             m_onProgress = onProgress;

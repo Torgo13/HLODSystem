@@ -8,7 +8,7 @@ namespace Unity.HLODSystem
         [SerializeField] 
         private bool m_removeAtBuild;
         [SerializeField] 
-        private List<HLODMeshSetterGroup> m_meshSettings;
+        private List<HLODMeshSetterGroup> m_meshSettings = new List<HLODMeshSetterGroup>();
 
         public bool RemoveAtBuild
         {
@@ -31,9 +31,9 @@ namespace Unity.HLODSystem
             return m_meshSettings[index];
         }
 
-        public HLODMeshSetterGroup FindGroup(int level)
+        public HLODMeshSetterGroup? FindGroup(int level)
         {
-            HLODMeshSetterGroup group = null;
+            HLODMeshSetterGroup? group = null;
             for (int i = 0; i < m_meshSettings.Count; ++i)
             {
                 if (m_meshSettings[i].TargetLevel <= level)

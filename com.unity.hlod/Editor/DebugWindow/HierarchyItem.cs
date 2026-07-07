@@ -13,7 +13,7 @@ namespace Unity.HLODSystem.DebugWindow
 
 
         private HLODItemData m_hlodData;
-        private HierarchyItemData m_data;
+        private HierarchyItemData? m_data;
 
         private HLODDebugWindow m_window;
         private HLODItem m_hlodItem;
@@ -22,7 +22,7 @@ namespace Unity.HLODSystem.DebugWindow
         private Toggle m_foldoutToggle;
         private VisualElement m_root;
 
-        public HierarchyItemData Data
+        public HierarchyItemData? Data
         {
             get
             {
@@ -79,7 +79,7 @@ namespace Unity.HLODSystem.DebugWindow
             var node = m_data.TreeNode;
             var isRendered = false;
 
-            if (m_window.HighlightRendered)
+            if (m_window.HighlightRendered && node != null)
             {
                 isRendered = node.CurrentState == HLODTreeNode.State.Low ||
                              (node.CurrentState == HLODTreeNode.State.High && node.GetChildTreeNodeCount() == 0);
@@ -98,8 +98,11 @@ namespace Unity.HLODSystem.DebugWindow
         public void BindTreeNode(HierarchyItemData data)
         {
             m_data = data;
+            
+            if (data.TreeNode == null)
+                return;
 
-            if (m_data.TreeNode.GetChildTreeNodeCount() == 0)
+            if (data.TreeNode.GetChildTreeNodeCount() == 0)
             {
                 m_foldoutToggle.visible = false;
             }
@@ -131,7 +134,8 @@ namespace Unity.HLODSystem.DebugWindow
         }
         private void FoldoutValueChanged(ChangeEvent<bool> evt)
         {
-            m_data.IsOpen = evt.newValue;
+            if (m_data != null)
+                m_data.IsOpen = evt.newValue;
         }
 
         

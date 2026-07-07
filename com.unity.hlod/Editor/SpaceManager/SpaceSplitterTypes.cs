@@ -23,8 +23,11 @@ namespace Unity.HLODSystem.SpaceManager
             return s_Types.ToArray();
         }
 
-        public static ISpaceSplitter CreateInstance(HLOD hlod)
+        public static ISpaceSplitter? CreateInstance(HLOD hlod)
         {
+            if (hlod.SpaceSplitterType == null)
+                return null;
+            
             if (s_Types.IndexOf(hlod.SpaceSplitterType) < 0)
                 return null;
             

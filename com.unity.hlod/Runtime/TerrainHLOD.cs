@@ -8,13 +8,13 @@ namespace Unity.HLODSystem
 {
     public class TerrainHLOD : MonoBehaviour, ISerializationCallbackReceiver, IGeneratedResourceManager
     {
-        private Type m_SimplifierType;
-        private Type m_StreamingType;
+        private Type? m_SimplifierType;
+        private Type? m_StreamingType;
 
         [SerializeField] private string m_SimplifierTypeStr = "";
         [SerializeField] private string m_StreamingTypeStr = "";
 
-        [SerializeField] private TerrainData m_TerrainData;
+        [SerializeField] private TerrainData? m_TerrainData;
         [SerializeField] private bool m_DestroyTerrain = true;
         [SerializeField] private float m_ChunkSize = 30.0f;
         [SerializeField] private int m_BorderVertexCount = 256;
@@ -39,19 +39,19 @@ namespace Unity.HLODSystem
         [SerializeField]
         private List<GameObject> m_convertedPrefabObjects = new List<GameObject>();
         
-        public Type SimplifierType
+        public Type? SimplifierType
         {
             set { m_SimplifierType = value; }
             get { return m_SimplifierType; }
         }
 
-        public Type StreamingType
+        public Type? StreamingType
         {
             set { m_StreamingType = value; }
             get { return m_StreamingType; }
         }
 
-        public TerrainData TerrainData
+        public TerrainData? TerrainData
         {
             set { m_TerrainData = value;}
             get { return m_TerrainData; }
@@ -155,9 +155,9 @@ namespace Unity.HLODSystem
         public void OnBeforeSerialize()
         {
             if (m_SimplifierType != null)
-                m_SimplifierTypeStr = m_SimplifierType.AssemblyQualifiedName;
+                m_SimplifierTypeStr = m_SimplifierType.AssemblyQualifiedName!;
             if (m_StreamingType != null)
-                m_StreamingTypeStr = m_StreamingType.AssemblyQualifiedName;
+                m_StreamingTypeStr = m_StreamingType.AssemblyQualifiedName!;
         }
 
         public void OnAfterDeserialize()

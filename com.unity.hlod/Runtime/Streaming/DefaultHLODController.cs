@@ -53,12 +53,12 @@ namespace Unity.HLODSystem.Streaming
             }
         }
 
-        public override void LoadHighObject(int id, Action<GameObject> loadDoneCallback)
+        public override void LoadHighObject(int id, Action<GameObject>? loadDoneCallback)
         {
             loadDoneCallback?.Invoke(m_gameObjectList[id]);
         }
 
-        public override void LoadLowObject(int id, Action<GameObject> loadDoneCallback)
+        public override void LoadLowObject(int id, Action<GameObject>? loadDoneCallback)
         {
             loadDoneCallback?.Invoke(m_lowGameObjects[id]);
         }

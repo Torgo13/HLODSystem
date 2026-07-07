@@ -8,15 +8,15 @@ namespace Unity.HLODSystem.DebugWindow
 {
     public class HLODItemData : ScriptableObject
     {
-        private HLODControllerBase m_controller;
+        private HLODControllerBase? m_controller;
         [SerializeField]
-        private string m_name;
+        private string m_name = string.Empty;
         private List<HLODTreeNode> m_nodes = new List<HLODTreeNode>();
         [SerializeField]
         private bool m_enableDebug = true;
         private List<HierarchyItemData> m_hierarchyItemDatas = new List<HierarchyItemData>();
 
-        public HLODControllerBase Controller
+        public HLODControllerBase? Controller
         {
             get
             {
@@ -46,13 +46,12 @@ namespace Unity.HLODSystem.DebugWindow
             {
                 var node = treeNodeTravelStack.Pop();
                 var label = labelStack.Pop();
-                m_hierarchyItemDatas.Add(new HierarchyItemData()
-                {
-                    Index = m_hierarchyItemDatas.Count,
-                    TreeNode = node,
-                    Label = label,
-                    IsOpen = true,
-                });
+                var itemData = CreateInstance<HierarchyItemData>();
+                itemData.Index = m_hierarchyItemDatas.Count;
+                itemData.TreeNode = node;
+                itemData.Label = label;
+                itemData.IsOpen = true;
+                m_hierarchyItemDatas.Add(itemData);
                 m_nodes.Add(node);
                 
                 for (int i = node.GetChildTreeNodeCount() - 1; i >= 0; --i)

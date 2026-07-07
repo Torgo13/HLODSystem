@@ -44,7 +44,10 @@ namespace Unity.HLODSystem
             public void Dispose()
             {
                 m_textures.Dispose();
+#if OPTIMISATION_NULL
+#else
                 m_textures = null;
+#endif // OPTIMISATION_NULL
                 m_detector.Dispose();
             }
         }
@@ -115,7 +118,7 @@ namespace Unity.HLODSystem
             }
             public void Dispose()
             {
-                m_texture?.Dispose();
+                m_texture.Dispose();
                 m_detector.Dispose();
             }
             
@@ -149,13 +152,13 @@ namespace Unity.HLODSystem
 
             public static Source Combine(Source lhs, Source rhs)
             {
-                Source newSource = new Source();
-                newSource.m_obj = new List<object>();
+                Source newSource = new Source(
+                    new List<object>(lhs.m_obj.Count + rhs.m_obj.Count),
+                    new DisposableList<MaterialTexture>());
                 newSource.m_obj.AddRange(lhs.m_obj);
                 newSource.m_obj.AddRange(rhs.m_obj);
 
-                newSource.m_textures = new DisposableList<MaterialTexture>();
-                newSource.m_textureGuids = new List<Guid>();
+                newSource.m_textureGuids = new List<Guid>(lhs.m_textures.Count);
 
                 for (int i = 0; i < lhs.m_textures.Count; ++i)
                 {
@@ -193,13 +196,15 @@ namespace Unity.HLODSystem
             private List<Guid> m_textureGuids;
             private DisposableList<MaterialTexture> m_textures;
 
-
+#if UNUSED
             //use for combine.
             //this constructor should not call from out
             private Source()
             {
                 
             }
+#endif // UNUSED
+            
             public Source(object obj, DisposableList<MaterialTexture> textures)
             {
                 m_obj = new List<object>();
@@ -215,18 +220,16 @@ namespace Unity.HLODSystem
             }
             public void Dispose()
             {
-                m_textures?.Dispose();
+                m_textures.Dispose();
                 m_detector.Dispose();
             }
 
             public Source Clone()
             {
-                Source ns = new Source();
-                ns.m_obj = new List<object>();
-                ns.m_obj.AddRange(m_obj);
-                ns.m_textureGuids = new List<Guid>();
-                ns.m_textureGuids.AddRange(m_textureGuids);
-                ns.m_textures = new DisposableList<MaterialTexture>();
+                Source ns = new Source(
+                    new List<object>(m_obj),
+                    new DisposableList<MaterialTexture>());
+                ns.m_textureGuids = new List<Guid>(m_textureGuids);
                 for (int i = 0; i < m_textures.Count; ++i)
                 {
                     ns.m_textures.Add(m_textures[i].Clone());
@@ -248,7 +251,7 @@ namespace Unity.HLODSystem
                 return minTextureCount;
             }
 
-            public TextureAtlas CreateAtlas(TextureFormat format, int packTextureSize, bool linear)
+            public TextureAtlas? CreateAtlas(TextureFormat format, int packTextureSize, bool linear)
             {
                 if (m_textures.Count == 0)
                 {
@@ -346,9 +349,9 @@ namespace Unity.HLODSystem
             }
 
 
-            public void CombineSources()
+            public void CombineSources(List<Score> scoreList)
             {
-                List<Score> scoreList = new List<Score>();
+                scoreList.Clear();
                 for (int i = 0; i < m_sources.Count; ++i)
                 {
                     for (int k = i + 1; k < m_sources.Count; ++k)
@@ -383,19 +386,18 @@ namespace Unity.HLODSystem
                     }
 
                     scoreList.Sort((lhs, rhs) => rhs.MatchCount - lhs.MatchCount);
-                    i = -1; //for back to the first loop..
+                    i = -1; //for back to the first loop.
 
                 }
             }
 
 
-            public DisposableList<TextureAtlas> CreateTextureAtlases()
+            public List<TextureAtlas> CreateTextureAtlases(List<TextureAtlas> atlases)
             {
-                DisposableList<TextureAtlas> atlases = new DisposableList<TextureAtlas>();
-
+                atlases.Clear();
                 for (int i = 0; i < m_sources.Count; ++i)
                 {
-                    TextureAtlas item = m_sources[i].CreateAtlas(m_format, m_packTextureSize, m_linear);
+                    TextureAtlas? item = m_sources[i].CreateAtlas(m_format, m_packTextureSize, m_linear);
                     if ( item != null )
                         atlases.Add(item);
                 }
@@ -412,6 +414,7 @@ namespace Unity.HLODSystem
 
         DisposableList<Source> m_sources = new DisposableList<Source>();
         DisposableList<TextureAtlas> m_atlas = new DisposableList<TextureAtlas>();
+        public IList<TextureAtlas> Atlases => m_atlas;
 
         public TexturePacker()
         {
@@ -452,16 +455,18 @@ namespace Unity.HLODSystem
                     taskGroups[maxCount].AddSource(m_sources[i]);
                 }
 
+                using var _0 = UnityEngine.Pool.ListPool<Score>.Get(out var scoreList);
+                using var _1 = UnityEngine.Pool.ListPool<TextureAtlas>.Get(out var atlases);
                 //Second, we should figure out which group should be combined from each taskGroup.
                 foreach (var taskGroup in taskGroups.Values)
                 {
-                    taskGroup.CombineSources();
-                    m_atlas.AddRange(taskGroup.CreateTextureAtlases());
+                    taskGroup.CombineSources(scoreList);
+                    m_atlas.AddRange(taskGroup.CreateTextureAtlases(atlases));
                 }
             }
         }
 
-        public TextureAtlas GetAtlas(object obj)
+        public TextureAtlas? GetAtlas(object obj)
         {
             for (int i = 0; i < m_atlas.Count; ++i)
             {
@@ -475,7 +480,6 @@ namespace Unity.HLODSystem
         {
             return m_atlas.ToArray();
         }
-        
     }
 
 }

@@ -20,7 +20,7 @@ namespace Unity.HLODSystem.Utils
     {
         private NativeArray<int> m_detector = new NativeArray<int>(1, Allocator.Persistent);
         
-        private WorkingMesh m_mesh;
+        private WorkingMesh? m_mesh;
         private DisposableList<WorkingMaterial> m_materials;
         private Matrix4x4 m_localToWorld;
 
@@ -28,8 +28,8 @@ namespace Unity.HLODSystem.Utils
 
         private UnityEngine.Rendering.LightProbeUsage m_lightProbeUsage;
 
-        public string Name { set; get; }
-        public WorkingMesh Mesh
+        public string? Name { set; get; }
+        public WorkingMesh? Mesh
         {
             get { return m_mesh; }
         }
@@ -63,7 +63,7 @@ namespace Unity.HLODSystem.Utils
         {
             //clean old data
             m_mesh?.Dispose();
-            m_materials?.Dispose();
+            m_materials.Dispose();
             
             MeshFilter filter = renderer.GetComponent<MeshFilter>();
             if (filter != null && filter.sharedMesh != null)
@@ -71,7 +71,9 @@ namespace Unity.HLODSystem.Utils
                 m_mesh = filter.sharedMesh.ToWorkingMesh(m_allocator);
             }
 
-            foreach (var mat in renderer.sharedMaterials)
+            using var _0 = UnityEngine.Pool.ListPool<Material>.Get(out var sharedMaterials);
+            renderer.GetSharedMaterials(sharedMaterials);
+            foreach (var mat in sharedMaterials)
             {
                 m_materials.Add(mat.ToWorkingMaterial(m_allocator));
             }
@@ -98,7 +100,7 @@ namespace Unity.HLODSystem.Utils
         public void Dispose()
         {
             m_mesh?.Dispose();
-            m_materials?.Dispose();
+            m_materials.Dispose();
             m_detector.Dispose();
         }
     }

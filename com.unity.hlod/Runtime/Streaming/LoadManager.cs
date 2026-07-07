@@ -7,7 +7,7 @@ namespace Unity.HLODSystem.Streaming
     public class LoadManager
     {
         #region Singleton
-        private static LoadManager s_instance;
+        private static LoadManager? s_instance;
        
         public static LoadManager Instance
         {
@@ -43,7 +43,7 @@ namespace Unity.HLODSystem.Streaming
                 get { return m_controller; }
             }
 
-            public GameObject LoadedObject
+            public GameObject? LoadedObject
             {
                 get { return m_loadedObject; }
             }
@@ -72,14 +72,14 @@ namespace Unity.HLODSystem.Streaming
             
             protected bool m_isLoading = false;
             protected bool m_isHighObject = false;
-            protected GameObject m_loadedObject = null;
+            protected GameObject? m_loadedObject = null;
             
             private HLODControllerBase m_controller;
             private int m_id;
             private int m_level;
             private float m_distnace;
             
-            protected Action<Handle> m_loadDoneCallback;
+            protected Action<Handle>? m_loadDoneCallback;
 
         }
 
@@ -152,7 +152,7 @@ namespace Unity.HLODSystem.Streaming
 
         public void UnloadHighObject(Handle handle)
         {
-            HandleLoader handleLoader = handle as HandleLoader;
+            HandleLoader? handleLoader = handle as HandleLoader;
             if (handleLoader == null)
             {
                 Debug.LogError("Handle is not created by LoadManager.");
@@ -163,7 +163,7 @@ namespace Unity.HLODSystem.Streaming
         }
         public void UnloadLowObject(Handle handle)
         {
-            HandleLoader handleLoader = handle as HandleLoader;
+            HandleLoader? handleLoader = handle as HandleLoader;
             if (handleLoader == null)
             {
                 Debug.LogError("Handle is not created by LoadManager.");

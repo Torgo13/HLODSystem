@@ -27,12 +27,14 @@ namespace Unity.HLODSystem.Utils
 
             if (collider is BoxCollider boxCollider)
             {
-                parameters.SizeX = boxCollider.size.x;
-                parameters.SizeY = boxCollider.size.y;
-                parameters.SizeZ = boxCollider.size.z;
-                parameters.CenterX = boxCollider.center.x;
-                parameters.CenterY = boxCollider.center.y;
-                parameters.CenterZ = boxCollider.center.z;
+                var size = boxCollider.size;
+                var center = boxCollider.center;
+                parameters.SizeX = size.x;
+                parameters.SizeY = size.y;
+                parameters.SizeZ = size.z;
+                parameters.CenterX = center.x;
+                parameters.CenterY = center.y;
+                parameters.CenterZ = center.z;
             }
             else if (collider is MeshCollider meshCollider)
             {
@@ -41,16 +43,18 @@ namespace Unity.HLODSystem.Utils
             }
             else if (collider is SphereCollider sphereCollider)
             {
-                parameters.CenterX = sphereCollider.center.x;
-                parameters.CenterY = sphereCollider.center.y;
-                parameters.CenterZ = sphereCollider.center.z;
+                var center = sphereCollider.center;
+                parameters.CenterX = center.x;
+                parameters.CenterY = center.y;
+                parameters.CenterZ = center.z;
                 parameters.Radius = sphereCollider.radius;
             }
             else if (collider is CapsuleCollider capsuleCollider)
             {
-                parameters.CenterX = capsuleCollider.center.x;
-                parameters.CenterY = capsuleCollider.center.y;
-                parameters.CenterZ = capsuleCollider.center.z;
+                var center = capsuleCollider.center;
+                parameters.CenterX = center.x;
+                parameters.CenterY = center.y;
+                parameters.CenterZ = center.z;
                 parameters.Radius = capsuleCollider.radius;
                 parameters.Height = capsuleCollider.height;
                 parameters.Direction = capsuleCollider.direction;
@@ -70,12 +74,13 @@ namespace Unity.HLODSystem.Utils
 
     public class WorkingCollider
     {
-        string m_type;
+        string m_type = string.Empty;
 
         Vector3 m_position;
         Quaternion m_rotation;
         Vector3 m_scale;
 
+        readonly
         SerializableDynamicObject m_parameters = new SerializableDynamicObject();
 
         public string Type

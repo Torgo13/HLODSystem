@@ -26,7 +26,7 @@ namespace Unity.HLODSystem.Utils
             {
             }
 
-            public object Current
+            public object? Current
             {
                 get { return null; }
             }
@@ -46,7 +46,7 @@ namespace Unity.HLODSystem.Utils
                 IEnumerator coroutine = m_routineStack.Peek();
                 if (coroutine.MoveNext())
                 {
-                    object cur = Current;
+                    object? cur = Current;
 
                     if (cur == null)
                     {
@@ -54,20 +54,20 @@ namespace Unity.HLODSystem.Utils
                     }
                     else if (cur is IEnumerator)
                     {
-                        m_routineStack.Push(cur as IEnumerator);
+                        m_routineStack.Push((IEnumerator)cur);
                     }
                     else if (cur is AsyncOperation)
                     {
-                        m_routineStack.Push(new AsyncOperationEnumerator(cur as AsyncOperation));
+                        m_routineStack.Push(new AsyncOperationEnumerator((AsyncOperation)cur));
                     }
                     else if (cur is BranchCoroutine)
                     {
-                        var branch = cur as BranchCoroutine;
+                        var branch = (BranchCoroutine)cur;
                         m_branchList.Add(CoroutineRunner.RunCoroutine(branch.GetBranch()));
                     }
                     else if (cur is WaitForBranches)
                     {
-                        m_routineStack.Push(WaitForBranchesImpl(cur as WaitForBranches));
+                        m_routineStack.Push(WaitForBranchesImpl((WaitForBranches)cur));
                     }
                     else
                     {
@@ -93,7 +93,7 @@ namespace Unity.HLODSystem.Utils
             m_routineStack.Peek().Reset();
         }
 
-        public object Current { get { return m_routineStack.Count > 0 ? m_routineStack.Peek().Current : null; } }
+        public object? Current { get { return m_routineStack.Count > 0 ? m_routineStack.Peek().Current : null; } }
 
 
         private IEnumerator WaitForBranchesImpl(WaitForBranches obj)
@@ -109,8 +109,8 @@ namespace Unity.HLODSystem.Utils
 
 
 
-    //Editor is not support coroutine
-    //so, if it run on editor, it have to run coroutine manually.
+    //Editor does not support coroutines
+    //so, if it runs in the editor, it has to run the coroutine manually.
     public class CoroutineRunner : MonoBehaviour
     {
         public static IEnumerator RunCoroutine(IEnumerator coroutine)
@@ -119,11 +119,11 @@ namespace Unity.HLODSystem.Utils
         }
 
 #if UNITY_EDITOR
-        private static List<CustomCoroutine> s_coroutines;
+        private static readonly List<CustomCoroutine> s_coroutines = new List<CustomCoroutine>();
         [InitializeOnLoadMethod]
         private static void Setup()
         {
-            s_coroutines = new List<CustomCoroutine>();
+            s_coroutines.Clear();
             EditorApplication.update+= EditorUpdate;
         }
 

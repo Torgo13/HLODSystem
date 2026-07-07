@@ -20,7 +20,7 @@ namespace Unity.HLODSystem.Utils
         public static void AddLayer(string layerName)
         {
             SerializedObject so;
-            var layers = GetTagManagerProperty("layers", out so);
+            var layers = GetTagManagerProperty("layers", out so!);
             if (layers != null)
             {
                 var found = false;
@@ -55,7 +55,7 @@ namespace Unity.HLODSystem.Utils
             }
         }
 
-        public static SerializedProperty GetTagManagerProperty(string name, out SerializedObject so)
+        public static SerializedProperty? GetTagManagerProperty(string name, out SerializedObject? so)
         {
             var asset = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
             if ((asset != null) && (asset.Length > 0))

@@ -91,7 +91,10 @@ namespace Unity.HLODSystem
                 m_uvs3 = ArrayToBytes(mesh.uv3);
                 m_uvs4 = ArrayToBytes(mesh.uv4);
                 m_colors = ArrayToBytes(mesh.colors);
-                m_indices = new List<int[]>();
+                if (m_indices == null)
+                    m_indices = new List<int[]>();
+                else
+                    m_indices.Clear();
                 for (int i = 0; i < mesh.subMeshCount; ++i)
                 {
                     m_indices.Add(mesh.GetTriangles(i));
@@ -220,11 +223,11 @@ namespace Unity.HLODSystem
         [Serializable]
         public class SerializableMaterial
         {
-            [SerializeField] private string m_name;
-            [SerializeField] private string m_id;
-            [SerializeField] private string m_assetGuid;
-            [SerializeField] private string m_jsonData;
-            [SerializeField] private List<SerializableTexture> m_textures;
+            [SerializeField] private string m_name = string.Empty;
+            [SerializeField] private string m_id = string.Empty;
+            [SerializeField] private string m_assetGuid = string.Empty;
+            [SerializeField] private string m_jsonData = string.Empty;
+            [SerializeField] private List<SerializableTexture> m_textures = new List<SerializableTexture>();
 
             public string ID
             {
@@ -233,16 +236,22 @@ namespace Unity.HLODSystem
 
             public void AddTexture(SerializableTexture texture)
             {
+#if OPTIMISATION_NULL
+#else
                 if (m_textures == null)
                     m_textures = new List<SerializableTexture>();
+#endif // OPTIMISATION_NULL
 
                 m_textures.Add(texture);
             }
 
             public int GetTextureCount()
             {
+#if OPTIMISATION_NULL
+#else
                 if (m_textures == null)
                     return 0;
+#endif // OPTIMISATION_NULL
                 return m_textures.Count;
             }
 
@@ -290,7 +299,7 @@ namespace Unity.HLODSystem
                     var objects = AssetDatabase.LoadAllAssetsAtPath(path);
                     for (int i = 0; i < objects.Length; ++i)
                     {
-                        Material mat = objects[i] as Material;
+                        Material? mat = objects[i] as Material;
                         
                         if (mat == null)
                             continue;
@@ -307,7 +316,7 @@ namespace Unity.HLODSystem
         [Serializable]
         public class SerializableObject
         {
-            [SerializeField] private string m_name;
+            [SerializeField] private string m_name = string.Empty;
             [SerializeField] private SerializableMesh m_mesh;
             [SerializeField] private List<string> m_materialIds = new List<string>();
             [SerializeField] private List<string> m_materialNames = new List<string>();
@@ -340,8 +349,8 @@ namespace Unity.HLODSystem
             {
                 Name = obj.Name;
                 m_mesh.From(obj.Mesh);
-                m_materialIds = new List<string>();
-                m_materialNames = new List<string>();
+                m_materialIds.Clear();
+                m_materialNames.Clear();
                 m_lightProbeUsage = obj.LightProbeUsage;
                 for (int i = 0; i < obj.Materials.Count; ++i)
                 {
@@ -404,9 +413,9 @@ namespace Unity.HLODSystem
         public class SerializableCollider
         {
             [SerializeField]
-            string m_name;
+            string m_name = string.Empty;
             [SerializeField]
-            string m_type;
+            string m_type = string.Empty;
             [SerializeField]
             SerializableVector3 m_position;
             [SerializeField]
@@ -432,7 +441,7 @@ namespace Unity.HLODSystem
                 m_parameters = collider.Parameters;
             }
 
-            public GameObject CreateGameObject()
+            public GameObject? CreateGameObject()
             {
                 if (m_type == typeof(BoxCollider).Name)
                 {
@@ -482,7 +491,7 @@ namespace Unity.HLODSystem
                 return go;
             }
 
-            private GameObject CreateMeshCollider()
+            private GameObject? CreateMeshCollider()
             {
                 dynamic param = m_parameters;
                 string sharedMeshPath = param.SharedMeshPath;
@@ -585,7 +594,7 @@ namespace Unity.HLODSystem
             get { return m_compressionData; }
         }
 
-        [SerializeField] private string m_name;
+        [SerializeField] private string m_name = string.Empty;
         [SerializeField] private TextureCompressionData m_compressionData;
 
         [SerializeField] private List<SerializableObject> m_objects = new List<SerializableObject>();
@@ -645,7 +654,7 @@ namespace Unity.HLODSystem
 
                     for (int ti = 0; ti < textureNames.Length; ++ti)
                     {
-                        WorkingTexture tex = wm.GetTexture(textureNames[ti]);
+                        WorkingTexture? tex = wm.GetTexture(textureNames[ti]);
                         if (tex == null)
                             continue;
 
@@ -683,7 +692,9 @@ namespace Unity.HLODSystem
                 string[] textureNames = wm.GetTextureNames();
                 for (int ti = 0; ti < textureNames.Length; ++ti)
                 {
-                    WorkingTexture wt = wm.GetTexture(textureNames[ti]);
+                    WorkingTexture? wt = wm.GetTexture(textureNames[ti]);
+                    if (wt == null)
+                        continue;
                     SerializableTexture st = new SerializableTexture();
                     st.From(wt.ToTexture());
                     st.Name = textureNames[ti];
@@ -712,13 +723,16 @@ namespace Unity.HLODSystem
 
         public int GetMaterialCount()
         {
+#if OPTIMISATION_NULL
+#else
             if (m_materials == null)
                 return 0;
+#endif // OPTIMISATION_NULL
 
             return m_materials.Count;
         }
 
-        private SerializableMaterial GetMaterial(string id)
+        private SerializableMaterial? GetMaterial(string id)
         {
             for (int i = 0; i < m_materials.Count; ++i)
             {

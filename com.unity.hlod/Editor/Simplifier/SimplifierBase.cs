@@ -19,7 +19,9 @@ namespace Unity.HLODSystem.Simplifier
         {
             for (int i = 0; i < buildInfo.WorkingObjects.Count; ++i)
             {
-                Utils.WorkingMesh mesh = buildInfo.WorkingObjects[i].Mesh;
+                Utils.WorkingMesh? mesh = buildInfo.WorkingObjects[i].Mesh;
+                if (mesh == null)
+                    continue;
 
                 int triangleCount = mesh.triangles.Length / 3;
                 float maxQuality = Mathf.Min((float)m_options.SimplifyMaxPolygonCount / (float)triangleCount, (float)m_options.SimplifyPolygonRatio);
@@ -37,9 +39,10 @@ namespace Unity.HLODSystem.Simplifier
 //                if (simplifiedMesh == null)
 //                {
 //                    Cache.SimplifiedCache.MarkGenerating(GetType(), mesh, ratio);
+                    int i1 = i;
                     yield return GetSimplifiedMesh(mesh, ratio, (m) =>
                     {
-                        buildInfo.WorkingObjects[i].SetMesh(m);
+                        buildInfo.WorkingObjects[i1].SetMesh(m);
                     });
 //                    Cache.SimplifiedCache.Update(GetType(), mesh, simplifiedMesh, ratio);
                     

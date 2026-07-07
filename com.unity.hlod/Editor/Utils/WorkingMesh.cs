@@ -12,7 +12,7 @@ namespace Unity.HLODSystem.Utils
         public static WorkingMesh ToWorkingMesh(this Mesh mesh, Allocator allocator)
         {
             var bindposes = mesh.bindposes;
-            var wm = new WorkingMesh(allocator, mesh.vertexCount, mesh.triangles.Length, mesh.subMeshCount, bindposes.Length);
+            var wm = new WorkingMesh(allocator, mesh.vertexCount, mesh.triangles.Length, mesh.subMeshCount, bindposes?.Length ?? 0);
             mesh.ApplyToWorkingMesh(ref wm, bindposes);
 
             return wm;
@@ -20,7 +20,7 @@ namespace Unity.HLODSystem.Utils
 
         // Taking bindposes optional parameter is ugly, but saves an additional array allocation if it was already
         // accessed to get the length
-        public static void ApplyToWorkingMesh(this Mesh mesh, ref WorkingMesh wm, Matrix4x4[] bindposes = null)
+        public static void ApplyToWorkingMesh(this Mesh mesh, ref WorkingMesh wm, Matrix4x4[]? bindposes = null)
         {
             wm.indexFormat = mesh.indexFormat;
             wm.vertices = mesh.vertices;
@@ -34,9 +34,12 @@ namespace Unity.HLODSystem.Utils
             wm.boneWeights = mesh.boneWeights;
             wm.bindposes = bindposes ?? mesh.bindposes;
             wm.subMeshCount = mesh.subMeshCount;
+            var triangles = new System.Collections.Generic.List<int>();
             for (int i = 0; i < mesh.subMeshCount; i++)
             {
-                wm.SetTriangles(mesh.GetTriangles(i), i);
+                triangles.Clear();
+                mesh.GetTriangles(triangles, i);
+                wm.SetTriangles(triangles, i);
             }
             wm.name = mesh.name;
             wm.bounds = mesh.bounds;
@@ -64,6 +67,78 @@ namespace Unity.HLODSystem.Utils
         }
 
         const int k_MaxNameSize = 128;
+        
+#if OPTIMISATION
+        public NativeArray<Vector3> Vertices
+        {
+            get => m_Vertices.GetSubArray(0, vertexCount);
+            set
+            {
+                vertexCount = value.Length;
+                m_Vertices.GetSubArray(0, vertexCount).CopyFrom(value);
+            }
+        }
+        public NativeArray<int> Triangles => m_Triangles.GetSubArray(0, trianglesCount);
+        public NativeArray<Vector3> Normals => m_Normals.GetSubArray(0, normalsCount);
+        public NativeArray<Vector4> Tangents => m_Tangents.GetSubArray(0, tangentsCount);
+        public NativeArray<Vector2> UV => m_UV.GetSubArray(0, uvCount);
+        public NativeArray<Vector2> UV2 => m_UV2.GetSubArray(0, uv2Count);
+        public NativeArray<Vector2> UV3 => m_UV3.GetSubArray(0, uv3Count);
+        public NativeArray<Vector2> UV4 => m_UV4.GetSubArray(0, uv4Count);
+        public NativeArray<Color> Colors => m_Colors.GetSubArray(0, colorsCount);
+        public NativeArray<BoneWeight> BoneWeights => m_BoneWeights.GetSubArray(0, boneWeightsCount);
+        public NativeArray<Matrix4x4> Bindposes => m_Bindposes.GetSubArray(0, bindposesCount);
+        public NativeArray<int> GetTrianglesNative(int submesh)
+        {
+            if (submesh < m_SubmeshOffset.Length)
+            {
+                var start = 0;
+                var stop = 0;
+                GetTriangleRange(submesh, out start, out stop);
+                var length = stop - start;
+
+                return m_Triangles.GetSubArray(start, length);
+            }
+
+            return new NativeArray<int>(0, Allocator.Temp);
+        }
+
+        public void CopyFrom(WorkingMesh other)
+        {
+            vertexCount = other.vertexCount;
+            m_Vertices.GetSubArray(0, vertexCount).CopyFrom(other.m_Vertices.GetSubArray(0, vertexCount));
+            
+            normalsCount = other.normalsCount;
+            m_Normals.GetSubArray(0, normalsCount).CopyFrom(other.m_Normals.GetSubArray(0, normalsCount));
+            
+            uvCount = other.uvCount;
+            m_UV.GetSubArray(0, uvCount).CopyFrom(other.m_UV.GetSubArray(0, uvCount));
+        }
+
+        public void CopyFrom(
+            System.Collections.Generic.List<Vector3> vertices,
+            System.Collections.Generic.List<Vector3> normals,
+            System.Collections.Generic.List<Vector2> uv)
+        {
+            vertexCount = vertices.Count;
+            for (int i = 0; i < vertexCount; i++)
+            {
+                m_Vertices[i] = vertices[i];
+            }
+            
+            normalsCount = normals.Count;
+            for (int i = 0; i < normalsCount; i++)
+            {
+                m_Normals[i] = normals[i];
+            }
+            
+            uvCount = uv.Count;
+            for (int i = 0; i < uvCount; i++)
+            {
+                m_UV[i] = uv[i];
+            }
+        }
+#endif // OPTIMISATION
         
         public Vector3[] vertices
         {
@@ -273,8 +348,8 @@ namespace Unity.HLODSystem.Utils
 
         public Color32[] colors32
         {
-            get { return colors != null ? colors.Select(c => (Color32)c).ToArray() : null; }
-            set { colors = value != null ? value.Select(c => (Color)c).ToArray() : null; }
+            get { return colors.Select(c => (Color32)c).ToArray(); }
+            set { colors = value.Select(c => (Color)c).ToArray(); }
         }
 
         public BoneWeight[] boneWeights
@@ -355,7 +430,7 @@ namespace Unity.HLODSystem.Utils
             get { return Encoding.UTF8.GetString(m_Name.ToArray()); }
             set
             {
-                if (value == null)
+                if (string.IsNullOrEmpty(value))
                     value = string.Empty;
 
                 var bytes = Encoding.UTF8.GetBytes(value);
@@ -377,7 +452,7 @@ namespace Unity.HLODSystem.Utils
         public void RecalculateNormals() { }
         public void RecalculateTangents() { }
 
-        public void SetTriangles(int[] triangles, int submesh)
+        public void SetTriangles(ReadOnlySpan<int> triangles, int submesh)
         {
             if (submesh >= subMeshCount)
                 subMeshCount = submesh + 1;
@@ -423,7 +498,59 @@ namespace Unity.HLODSystem.Utils
                 destSlice.CopyFrom(sourceSlice);
             }
 
-            m_Triangles.Slice(preSliceLength, triangles.Length).CopyFrom(triangles);
+            triangles.CopyTo(m_Triangles.AsSpan().Slice(preSliceLength, triangles.Length));
+        }
+        
+        public void SetTriangles(System.Collections.Generic.List<int> triangles, int submesh)
+        {
+            if (submesh >= subMeshCount)
+                subMeshCount = submesh + 1;
+
+            var preSliceLength = m_SubmeshOffset[submesh];
+            if (preSliceLength < 0)
+            {
+                if (submesh > 0)
+                {
+                    m_SubmeshOffset[submesh] = trianglesCount;
+                    preSliceLength = trianglesCount;
+                }
+                else
+                {
+                    m_SubmeshOffset[submesh] = 0;
+                    preSliceLength = 0;
+                }
+            }
+            var totalCount = preSliceLength; // count prior to submesh
+            totalCount += triangles.Count; // new submesh triangle count
+
+            var postSliceOffset = 0;
+            var postSliceLength = 0;
+            if (submesh < subMeshCount - 2) // count of all triangles after submesh
+            {
+                postSliceOffset = m_SubmeshOffset[submesh + 1];
+                if (postSliceOffset >= 0)
+                {
+                    postSliceLength = trianglesCount - postSliceOffset;
+                    totalCount += postSliceLength;
+                }
+            }
+
+            trianglesCount = totalCount;
+
+            // Shift other following triangles up/down
+            if (postSliceOffset > 0)
+            {
+                var offset = preSliceLength + triangles.Count;
+                m_SubmeshOffset[submesh + 1] = offset;
+                var sourceSlice = new NativeSlice<int>(m_Triangles, postSliceOffset, postSliceLength);
+                var destSlice = new NativeSlice<int>(m_Triangles, offset, postSliceLength);
+                destSlice.CopyFrom(sourceSlice);
+            }
+
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                m_Triangles[i + preSliceLength] = triangles[i];
+            }
         }
 
         public int[] GetTriangles(int submesh)
@@ -461,7 +588,11 @@ namespace Unity.HLODSystem.Utils
 
         public WorkingMesh(Allocator allocator, int maxVertices, int maxTriangles, int maxSubmeshes, int maxBindposes) 
         {
+#if OPTIMISATION
+            m_Counts = new NativeArray<int>(ChannelCount, allocator);
+#else
             m_Counts = new NativeArray<int>(Enum.GetValues(typeof(Channel)).Length, allocator);
+#endif // OPTIMISATION
             m_Vertices = new NativeArray<Vector3>(maxVertices, allocator);
             m_Normals = new NativeArray<Vector3>(maxVertices, allocator);
             m_Tangents = new NativeArray<Vector4>(maxVertices, allocator);
@@ -621,7 +752,7 @@ namespace Unity.HLODSystem.Utils
             mesh.subMeshCount = subMeshCount;
             for (int i = 0; i < subMeshCount; i++)
             {
-                mesh.SetTriangles(GetTriangles(i), i);
+                mesh.SetIndices(GetTrianglesNative(i), MeshTopology.Triangles, i);
             }
             mesh.name = name;
             mesh.bounds = bounds;

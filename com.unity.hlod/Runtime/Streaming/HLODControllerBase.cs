@@ -43,7 +43,7 @@ namespace Unity.HLODSystem.Streaming
 
         public void Start()
         {
-            m_root.Initialize(this, m_spaceManager, null);
+            m_root?.Initialize(this, m_spaceManager, null);
             LoadManager.Instance.RegisterController(this);
             OnStart();
         }
@@ -63,8 +63,11 @@ namespace Unity.HLODSystem.Streaming
             OnStop();
             LoadManager.Instance.UnregisterController(this);
             HLODManager.Instance.Unregister(this);
+#if OPTIMISATION_NULL
+#else
             m_spaceManager = null;
             m_root = null;
+#endif // OPTIMISATION_NULL
         }
         #endregion
 
@@ -72,7 +75,7 @@ namespace Unity.HLODSystem.Streaming
         class LoadInfo
         {
             public LoadManager.Handle Handle;
-            public List<Action<LoadManager.Handle>> Callbacks = new List<Action<LoadManager.Handle>>();
+            public List<Action<LoadManager.Handle>?> Callbacks = new List<Action<LoadManager.Handle>?>();
 
             public void LoadDone(LoadManager.Handle handle)
             {
@@ -87,9 +90,9 @@ namespace Unity.HLODSystem.Streaming
         private Dictionary<int, LoadInfo> m_createdHighObjects = new Dictionary<int, LoadInfo>();
         private Dictionary<int, LoadInfo> m_createdLowObjects = new Dictionary<int, LoadInfo>();
 
-        public LoadManager.Handle GetHighObject(int id, int level, float distance, Action<LoadManager.Handle> loadDoneCallback)
+        public LoadManager.Handle GetHighObject(int id, int level, float distance, Action<LoadManager.Handle>? loadDoneCallback)
         {
-            LoadInfo loadInfo = null;
+            LoadInfo loadInfo;
             //already processing object to load.
             if (m_createdHighObjects.TryGetValue(id, out loadInfo) == true)
             {
@@ -115,9 +118,9 @@ namespace Unity.HLODSystem.Streaming
             return loadInfo.Handle;
         }
 
-        public LoadManager.Handle GetLowObject(int id, int level, float distance, Action<LoadManager.Handle> loadDoneCallback)
+        public LoadManager.Handle GetLowObject(int id, int level, float distance, Action<LoadManager.Handle>? loadDoneCallback)
         {
-            LoadInfo loadInfo = null;
+            LoadInfo loadInfo;
             //already processing object to load.
             if (m_createdLowObjects.TryGetValue(id, out loadInfo) == true)
             {
@@ -145,30 +148,33 @@ namespace Unity.HLODSystem.Streaming
 
         public void ReleaseHighObject(LoadManager.Handle handle)
         {
-            if (m_createdHighObjects.ContainsKey(handle.Id) == false)
+            if (!m_createdHighObjects.Remove(handle.Id))
             {
                 return;
             }
 
-            m_createdHighObjects.Remove(handle.Id);
             LoadManager.Instance.UnloadHighObject(handle);
         }
 
         public void ReleaseLowObject(LoadManager.Handle handle)
         {
-            if (m_createdLowObjects.ContainsKey(handle.Id) == false)
+            if (!m_createdLowObjects.Remove(handle.Id))
             {
                 return;
             }
 
-            m_createdLowObjects.Remove(handle.Id);
             LoadManager.Instance.UnloadLowObject(handle);
         }
         
         public void UpdateCull(Camera camera)
         {
+#if OPTIMISATION_NULL
+            if (m_root == null)
+                return;
+#else
             if (m_spaceManager == null)
                 return;
+#endif // OPTIMISATION_NULL
 
             m_spaceManager.UpdateCamera(this.transform, camera);
 
@@ -237,12 +243,12 @@ namespace Unity.HLODSystem.Streaming
         #endregion
 
         #region variables
-        private ISpaceManager m_spaceManager;
+        private ISpaceManager m_spaceManager = new QuadTreeSpaceManager();
 
         [SerializeField] 
         private HLODTreeNodeContainer m_treeNodeContainer;
         [SerializeField]
-        private HLODTreeNode m_root;
+        private HLODTreeNode? m_root;
 
         [SerializeField] private float m_cullDistance;
         [SerializeField] private float m_lodDistance;
@@ -251,7 +257,7 @@ namespace Unity.HLODSystem.Streaming
         private int m_controllerID;
 
         [SerializeField] 
-        private UserDataSerializerBase m_userDataSerializer;
+        private UserDataSerializerBase? m_userDataSerializer;
 
         [SerializeField]
         private Mode m_controlMode = Mode.AutoControl;
@@ -277,7 +283,7 @@ namespace Unity.HLODSystem.Streaming
             get { return m_treeNodeContainer; }
         }
 
-        public UserDataSerializerBase UserDataserializer
+        public UserDataSerializerBase? UserDataserializer
         {
             set
             {

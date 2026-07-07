@@ -11,15 +11,15 @@ namespace Unity.HLODSystem
     {
 #if UNITY_EDITOR
         [SerializeField]
-        private GameObject m_prefab;
+        private GameObject? m_prefab;
         [SerializeField]
         private bool m_isEdit = false;
 
-        private GameObject m_instantiatePrefab;
+        private GameObject? m_instantiatePrefab;
         private bool m_needUpdate = false;
 
 
-        public GameObject Prefab
+        public GameObject? Prefab
         {
             set
             {
@@ -44,12 +44,23 @@ namespace Unity.HLODSystem
 
         void Start()
         {
+#if OPTIMISATION_UNITY
+            using var _0 = UnityEngine.Pool.ListPool<GameObject>.Get(out var childList);
+            var t = transform;
+            for (int i = 0, childCount = t.childCount; i < childCount; i++)
+            {
+                var go = t.GetChild(i).gameObject;
+                if (go != m_instantiatePrefab)
+                    childList.Add(go);
+            }
+#else
             List<GameObject> childList = new List<GameObject>();
             foreach (Transform child in transform)
             {
                 if (child.gameObject != m_instantiatePrefab)
                     childList.Add(child.gameObject);
             }
+#endif // OPTIMISATION_UNITY
 
             for (int i = 0; i < childList.Count; ++i)
             {
