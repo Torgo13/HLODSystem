@@ -23,6 +23,33 @@ namespace Unity.HLODSystem.Utils
         public static void ApplyToWorkingMesh(this Mesh mesh, ref WorkingMesh wm, Matrix4x4[]? bindposes = null)
         {
             wm.indexFormat = mesh.indexFormat;
+#if OPTIMISATION
+            var vertices = UnityEngine.Pool.ListPool<Vector3>.Get();
+            var normals = UnityEngine.Pool.ListPool<Vector3>.Get();
+            var tangents = UnityEngine.Pool.ListPool<Vector4>.Get();
+            var uv = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv2 = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv3 = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv4 = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var colors = UnityEngine.Pool.ListPool<Color>.Get();
+            mesh.GetVertices(vertices);
+            mesh.GetNormals(normals);
+            mesh.GetTangents(tangents);
+            mesh.GetUVs(0, uv);
+            mesh.GetUVs(1, uv2);
+            mesh.GetUVs(2, uv3);
+            mesh.GetUVs(3, uv4);
+            mesh.GetColors(colors);
+            wm.CopyFrom(vertices, normals, tangents, uv, uv2, uv3, uv4, colors);
+            UnityEngine.Pool.ListPool<Vector3>.Release(vertices);
+            UnityEngine.Pool.ListPool<Vector3>.Release(normals);
+            UnityEngine.Pool.ListPool<Vector4>.Release(tangents);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv2);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv3);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv4);
+            UnityEngine.Pool.ListPool<Color>.Release(colors);
+#else
             wm.vertices = mesh.vertices;
             wm.normals = mesh.normals;
             wm.tangents = mesh.tangents;
@@ -31,6 +58,7 @@ namespace Unity.HLODSystem.Utils
             wm.uv3 = mesh.uv3;
             wm.uv4 = mesh.uv4;
             wm.colors = mesh.colors;
+#endif // OPTIMISATION
             wm.boneWeights = mesh.boneWeights;
             wm.bindposes = bindposes ?? mesh.bindposes;
             wm.subMeshCount = mesh.subMeshCount;
@@ -118,7 +146,12 @@ namespace Unity.HLODSystem.Utils
         public void CopyFrom(
             System.Collections.Generic.List<Vector3> vertices,
             System.Collections.Generic.List<Vector3> normals,
-            System.Collections.Generic.List<Vector2> uv)
+            System.Collections.Generic.List<Vector4>? tangents = null,
+            System.Collections.Generic.List<Vector2>? uv = null,
+            System.Collections.Generic.List<Vector2>? uv2 = null,
+            System.Collections.Generic.List<Vector2>? uv3 = null,
+            System.Collections.Generic.List<Vector2>? uv4 = null,
+            System.Collections.Generic.List<Color>? colors = null)
         {
             vertexCount = vertices.Count;
             for (int i = 0; i < vertexCount; i++)
@@ -131,11 +164,56 @@ namespace Unity.HLODSystem.Utils
             {
                 m_Normals[i] = normals[i];
             }
-            
-            uvCount = uv.Count;
-            for (int i = 0; i < uvCount; i++)
+
+            tangentsCount = tangents.Count;
+            for (int i = 0; i < tangentsCount; i++)
             {
-                m_UV[i] = uv[i];
+                m_Tangents[i] = tangents[i];
+            }
+
+            if (uv != null)
+            {
+                uvCount = uv.Count;
+                for (int i = 0; i < uvCount; i++)
+                {
+                    m_UV[i] = uv[i];
+                }
+            }
+
+            if (uv2 != null)
+            {
+                uv2Count = uv2.Count;
+                for (int i = 0; i < uv2Count; i++)
+                {
+                    m_UV2[i] = uv2[i];
+                }
+            }
+
+            if (uv3 != null)
+            {
+                uv3Count = uv3.Count;
+                for (int i = 0; i < uv3Count; i++)
+                {
+                    m_UV3[i] = uv3[i];
+                }
+            }
+
+            if (uv4 != null)
+            {
+                uv4Count = uv4.Count;
+                for (int i = 0; i < uv4Count; i++)
+                {
+                    m_UV4[i] = uv4[i];
+                }
+            }
+
+            if (colors != null)
+            {
+                colorsCount = colors.Count;
+                for (int i = 0; i < colorsCount; i++)
+                {
+                    m_Colors[i] = colors[i];
+                }
             }
         }
 #endif // OPTIMISATION
@@ -611,40 +689,6 @@ namespace Unity.HLODSystem.Utils
 #if OPTIMISATION
         private static readonly int ChannelCount = Enum.GetValues(typeof(Channel)).Length;
         public WorkingMesh(Allocator allocator,
-            System.Collections.Generic.List<Vector3> vertices, System.Collections.Generic.List<Vector3> normals,
-            System.Collections.Generic.List<Vector2> uvs, System.Collections.Generic.List<int[]> subMeshTris,
-            int maxTriangles, int maxBindposes)
-        {
-            int maxVertices = vertices.Count;
-            m_Counts = new NativeArray<int>(ChannelCount, allocator);
-            m_Vertices = new NativeArray<Vector3>(maxVertices, allocator);
-            m_Normals = new NativeArray<Vector3>(maxVertices, allocator);
-            m_Tangents = new NativeArray<Vector4>(maxVertices, allocator);
-            m_UV = new NativeArray<Vector2>(maxVertices, allocator);
-            m_UV2 = new NativeArray<Vector2>(maxVertices, allocator);
-            m_UV3 = new NativeArray<Vector2>(maxVertices, allocator);
-            m_UV4 = new NativeArray<Vector2>(maxVertices, allocator);
-            m_Colors = new NativeArray<Color>(maxVertices, allocator);
-            m_BoneWeights = new NativeArray<BoneWeight>(maxVertices, allocator);
-            m_Bindposes = new NativeArray<Matrix4x4>(maxBindposes, allocator);
-            m_Name = new NativeArray<byte>(k_MaxNameSize, allocator);
-            m_SubmeshOffset = new NativeArray<int>(subMeshTris.Count, allocator);
-            m_Triangles = new NativeArray<int>(maxTriangles, allocator);
-
-            for (int i = 0; i < maxVertices; i++)
-            {
-                m_Vertices[i] = vertices[i];
-                m_Normals[i] = normals[i];
-                m_UV[i] = uvs[i];
-            }
-
-            for (int i = 0; i < subMeshTris.Count; ++i)
-            {
-                SetTriangles(subMeshTris[i], i);
-            }
-        }
-
-        public WorkingMesh(Allocator allocator,
             ReadOnlySpan<Vector3> vertices, ReadOnlySpan<Vector3> normals, ReadOnlySpan<Vector4> tangents,
             ReadOnlySpan<Vector2> uvs, ReadOnlySpan<Vector2> uv2, ReadOnlySpan<Vector2> uv3, ReadOnlySpan<Vector2> uv4,
             ReadOnlySpan<Color> colors, int maxTriangles, int maxSubmeshes, int maxBindposes)
@@ -665,17 +709,23 @@ namespace Unity.HLODSystem.Utils
             m_SubmeshOffset = new NativeArray<int>(maxSubmeshes, allocator);
             m_Triangles = new NativeArray<int>(maxTriangles, allocator);
 
-            for (int i = 0; i < maxVertices; i++)
-            {
-                m_Vertices[i] = vertices[i];
-                m_Normals[i] = normals[i];
-                m_Tangents[i] = tangents[i];
-                m_UV[i] = uvs[i];
-                m_UV2[i] = uv2[i];
-                m_UV3[i] = uv3[i];
-                m_UV4[i] = uv4[i];
-                m_Colors[i] = colors[i];
-            }
+            vertices.CopyTo(m_Vertices);
+            normals.CopyTo(m_Normals);
+            tangents.CopyTo(m_Tangents);
+            uvs.CopyTo(m_UV);
+            uv2.CopyTo(m_UV2);
+            uv3.CopyTo(m_UV3);
+            uv4.CopyTo(m_UV4);
+            colors.CopyTo(m_Colors);
+
+            vertexCount = vertices.Length;
+            normalsCount = normals.Length;
+            tangentsCount = tangents.Length;
+            uvCount = uvs.Length;
+            uv2Count = uv2.Length;
+            uv3Count = uv3.Length;
+            uv4Count = uv4.Length;
+            colorsCount = colors.Length;
         }
 #endif // OPTIMISATION
 
@@ -736,9 +786,21 @@ namespace Unity.HLODSystem.Utils
         public void ApplyToMesh(Mesh mesh)
         {
             mesh.indexFormat = indexFormat;
-            if (vertices.Length > 65535)
+            if (vertexCount > 65535)
                 mesh.indexFormat = IndexFormat.UInt32;
-            
+
+#if OPTIMISATION
+            mesh.SetVertices(m_Vertices.GetSubArray(0, vertexCount));
+            mesh.SetNormals(m_Normals.GetSubArray(0, normalsCount));
+            mesh.SetTangents(m_Tangents.GetSubArray(0, tangentsCount));
+            mesh.SetUVs(0, m_UV.GetSubArray(0, uvCount));
+            mesh.SetUVs(1, m_UV2.GetSubArray(0, uv2Count));
+            mesh.SetUVs(2, m_UV3.GetSubArray(0, uv3Count));
+            mesh.SetUVs(3, m_UV4.GetSubArray(0, uv4Count));
+            mesh.SetColors(m_Colors.GetSubArray(0, colorsCount));
+            mesh.boneWeights = boneWeights;
+            mesh.SetBindposes(m_Bindposes.GetSubArray(0, bindposesCount));
+#else
             mesh.vertices = vertices;
             mesh.normals = normals;
             mesh.tangents = tangents;
@@ -749,6 +811,7 @@ namespace Unity.HLODSystem.Utils
             mesh.colors = colors;
             mesh.boneWeights = boneWeights;
             mesh.bindposes = bindposes;
+#endif // OPTIMISATION
             mesh.subMeshCount = subMeshCount;
             for (int i = 0; i < subMeshCount; i++)
             {

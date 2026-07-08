@@ -889,7 +889,7 @@ namespace Unity.HLODSystem
             WorkingMesh mesh = new WorkingMesh(Allocator.Persistent, vertices.Count, maxTris, subMeshTris.Count, 0);
             mesh.name = source.name;
 #if OPTIMISATION
-            mesh.CopyFrom(vertices, normals, uvs);
+            mesh.CopyFrom(vertices, normals, uv: uvs);
 #else
             mesh.vertices = vertices.ToArray();
             mesh.normals = normals.ToArray();

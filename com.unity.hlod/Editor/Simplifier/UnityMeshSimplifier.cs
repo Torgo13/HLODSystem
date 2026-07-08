@@ -25,6 +25,12 @@ namespace Unity.HLODSystem.Simplifier
 #if USING_COLLECTIONS
             using
 #endif // USING_COLLECTIONS
+#if OPTIMISATION
+            var meshSimplifier = new global::UnityMeshSimplifier.MeshSimplifier(
+                origin.Vertices, origin.Normals, origin.Tangents,
+                origin.UV, origin.UV2, origin.UV3, origin.UV4,
+                origin.Colors);
+#else
             var meshSimplifier = new global::UnityMeshSimplifier.MeshSimplifier();
             meshSimplifier.Vertices = origin.vertices;
             meshSimplifier.Normals = origin.normals;
@@ -34,6 +40,7 @@ namespace Unity.HLODSystem.Simplifier
             meshSimplifier.UV3 = origin.uv3;
             meshSimplifier.UV4 = origin.uv4;
             meshSimplifier.Colors = origin.colors;
+#endif // OPTIMISATION
 
             var triangles = new int[origin.subMeshCount][];
             for (var submesh = 0; submesh < origin.subMeshCount; submesh++)
@@ -52,6 +59,13 @@ namespace Unity.HLODSystem.Simplifier
                 triCount += meshSimplifier.GetSubMeshTriangles(i, subMeshIndices).Count;
             }
 
+#if OPTIMISATION
+            Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent,
+                meshSimplifier.VerticesSpan, meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
+                meshSimplifier.UVSpan, meshSimplifier.UV2Span, meshSimplifier.UV3Span, meshSimplifier.UV4Span,
+                meshSimplifier.ColorsSpan, triCount, meshSimplifier.SubMeshCount, 0);
+            nwm.name = origin.name;
+#else
             var vertices = meshSimplifier.Vertices;
             Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent, vertices.Length, triCount, meshSimplifier.SubMeshCount, 0);
             nwm.name = origin.name;
@@ -63,6 +77,7 @@ namespace Unity.HLODSystem.Simplifier
             nwm.uv3 = meshSimplifier.UV3;
             nwm.uv4 = meshSimplifier.UV4;
             nwm.colors = meshSimplifier.Colors;
+#endif // OPTIMISATION
             nwm.subMeshCount = meshSimplifier.SubMeshCount;
             subMeshIndices.Clear();
             for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
