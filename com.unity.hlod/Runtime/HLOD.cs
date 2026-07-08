@@ -161,7 +161,8 @@ namespace Unity.HLODSystem
             return controllerBases;
         }
         
-        public Bounds GetBounds(List<Renderer>? renderers = null)
+        public Bounds GetBounds(
+            List<Renderer>? renderers = null)
         {
             Bounds ret = new Bounds();
             if (renderers == null)

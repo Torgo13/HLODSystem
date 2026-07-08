@@ -23,7 +23,7 @@ namespace Unity.HLODSystem.Simplifier
                 if (mesh == null)
                     continue;
 
-                int triangleCount = mesh.triangles.Length / 3;
+                float triangleCount = mesh.TrianglesCount / 3;
                 float maxQuality = Mathf.Min((float)m_options.SimplifyMaxPolygonCount / (float)triangleCount, (float)m_options.SimplifyPolygonRatio);
                 float minQuality = Mathf.Max((float)m_options.SimplifyMinPolygonCount / (float)triangleCount, 0.0f);
 

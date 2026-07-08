@@ -73,6 +73,7 @@ namespace Unity.HLODSystem.Utils
 
             using var _0 = UnityEngine.Pool.ListPool<Material>.Get(out var sharedMaterials);
             renderer.GetSharedMaterials(sharedMaterials);
+            m_materials.EnsureCapacity(sharedMaterials.Count);
             foreach (var mat in sharedMaterials)
             {
                 m_materials.Add(mat.ToWorkingMaterial(m_allocator));

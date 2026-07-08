@@ -100,7 +100,7 @@ namespace Unity.HLODSystem
                     continue;
 
                 var methodInfo = constructedClass.GetMethod("SetData");
-                methodInfo?.Invoke(item, new object[]{pair.Value});
+                _ = methodInfo?.Invoke(item, new object[] { pair.Value });
 
                 item.SetName(pair.Key);
 

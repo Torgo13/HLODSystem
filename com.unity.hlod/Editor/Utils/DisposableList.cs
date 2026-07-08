@@ -9,6 +9,20 @@ namespace Unity.HLODSystem.Utils
         where T : IDisposable
     {
         List<T> m_list = new List<T>();
+
+        public DisposableList(int capacity = 0)
+        {
+            m_list = new List<T>(capacity);
+        }
+
+        public int Capacity { get => m_list.Capacity; set => m_list.Capacity = value; }
+
+        public void EnsureCapacity(int capacity)
+        {
+            if (m_list.Capacity < capacity)
+                m_list.Capacity = capacity;
+        }
+
         public void Dispose()
         {
             for (int i = 0; i < m_list.Count; ++i)

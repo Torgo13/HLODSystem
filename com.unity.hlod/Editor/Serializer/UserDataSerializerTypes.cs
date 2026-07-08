@@ -21,7 +21,7 @@ namespace Unity.HLODSystem.Serializer
                 Type = type,
             });
 
-            s_Types.Sort((lhs, rhs) => lhs.Order - rhs.Order);
+            s_Types.Sort(static (lhs, rhs) => lhs.Order - rhs.Order);
         }
 
         public static void UnregisterType(Type type)

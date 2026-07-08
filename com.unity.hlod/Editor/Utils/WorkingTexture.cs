@@ -25,6 +25,7 @@ namespace Unity.HLODSystem.Utils
         private NativeArray<int> m_detector = new NativeArray<int>(1, Allocator.Persistent);
         
         private WorkingTextureBuffer m_buffer;
+        public Color this[int index] { get => m_buffer[index]; set => m_buffer[index] = value; }
 
         public string Name
         {
@@ -251,6 +252,7 @@ namespace Unity.HLODSystem.Utils
 
         private string name = string.Empty;
         public string Name { get => name; set => name = value; }
+        public Color this[int index] { get => m_pixels[index]; set => m_pixels[index] = value; }
 
         public TextureFormat Format => m_format;
         public int Widht => m_width;

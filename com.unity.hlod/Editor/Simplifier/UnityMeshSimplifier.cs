@@ -63,7 +63,7 @@ namespace Unity.HLODSystem.Simplifier
             Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent,
                 meshSimplifier.VerticesSpan, meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
                 meshSimplifier.UVSpan, meshSimplifier.UV2Span, meshSimplifier.UV3Span, meshSimplifier.UV4Span,
-                meshSimplifier.ColorsSpan, triCount, meshSimplifier.SubMeshCount, 0);
+                meshSimplifier.ColorsSpan, triCount, meshSimplifier.SubMeshCount, maxBindposes: 0);
             nwm.name = origin.name;
 #else
             var vertices = meshSimplifier.Vertices;

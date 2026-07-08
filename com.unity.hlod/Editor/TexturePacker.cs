@@ -15,6 +15,10 @@ namespace Unity.HLODSystem
             private DisposableList<WorkingTexture> m_textures = new DisposableList<WorkingTexture>();
             private NativeArray<int> m_detector = new NativeArray<int>(1, Allocator.Persistent);
 
+            public MaterialTexture(int capacity = 0)
+            {
+                m_textures = new DisposableList<WorkingTexture>(capacity);
+            }
 
             public void Add(WorkingTexture texture)
             {
@@ -263,7 +267,7 @@ namespace Unity.HLODSystem
                 TextureAtlas atlas;
 
                 using (DisposableList<MaterialTexture> resizedTextures = CreateResizedTextures(itemSize, itemSize))
-                using (DisposableList<TextureCombiner> combiners = new DisposableList<TextureCombiner>())
+                using (DisposableList<TextureCombiner> combiners = new DisposableList<TextureCombiner>(resizedTextures.Count))
                 {
                     List<Rect> uvs = new List<Rect>(resizedTextures.Count);
                     List<Guid> guids = new List<Guid>(resizedTextures.Count);
@@ -298,7 +302,7 @@ namespace Unity.HLODSystem
 
             private DisposableList<MaterialTexture> CreateResizedTextures(int newWidth, int newHeight)
             {
-                DisposableList<MaterialTexture> resized = new DisposableList<MaterialTexture>();
+                DisposableList<MaterialTexture> resized = new DisposableList<MaterialTexture>(m_textures.Count);
                 for (int i = 0; i < m_textures.Count; ++i)
                 {
                     MaterialTexture newMT = new MaterialTexture();
@@ -349,7 +353,8 @@ namespace Unity.HLODSystem
             }
 
 
-            public void CombineSources(List<Score> scoreList)
+            public void CombineSources(
+                List<Score> scoreList)
             {
                 scoreList.Clear();
                 for (int i = 0; i < m_sources.Count; ++i)
@@ -360,7 +365,7 @@ namespace Unity.HLODSystem
                     }
                 }
                 
-                scoreList.Sort((lhs, rhs) => rhs.MatchCount - lhs.MatchCount);
+                scoreList.Sort(static (lhs, rhs) => rhs.MatchCount - lhs.MatchCount);
 
                 for (int i = 0; i < scoreList.Count; ++i)
                 {
@@ -385,14 +390,15 @@ namespace Unity.HLODSystem
                         scoreList.Add(Source.GetScore(m_sources[k], combinedSource));
                     }
 
-                    scoreList.Sort((lhs, rhs) => rhs.MatchCount - lhs.MatchCount);
+                    scoreList.Sort(static (lhs, rhs) => rhs.MatchCount - lhs.MatchCount);
                     i = -1; //for back to the first loop.
 
                 }
             }
 
 
-            public List<TextureAtlas> CreateTextureAtlases(List<TextureAtlas> atlases)
+            public List<TextureAtlas> CreateTextureAtlases(
+                List<TextureAtlas> atlases)
             {
                 atlases.Clear();
                 for (int i = 0; i < m_sources.Count; ++i)
@@ -432,7 +438,7 @@ namespace Unity.HLODSystem
         //TODO: must clear what the ownership of texture.
         public void AddTextureGroup(object obj, List<MaterialTexture> textures)
         {
-            DisposableList<MaterialTexture> copyTextures = new DisposableList<MaterialTexture>();
+            DisposableList<MaterialTexture> copyTextures = new DisposableList<MaterialTexture>(textures.Count);
             for (int i = 0; i < textures.Count; ++i)
             {
                 copyTextures.Add(textures[i].Clone());
@@ -480,6 +486,7 @@ namespace Unity.HLODSystem
         {
             return m_atlas.ToArray();
         }
+        
     }
 
 }

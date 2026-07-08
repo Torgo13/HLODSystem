@@ -109,33 +109,35 @@ namespace Unity.HLODSystem
             /// <param name="mipChain">Whether to create mipmaps on the created <see cref="Texture2D"/>.</param>
             /// <returns>The original <paramref name="tex"/> if it is already readable,
             /// otherwise returns a readable copy.</returns>
-            public static Texture2D ReadTexture(Texture2D tex, bool mipChain = false)
+            public static bool ReadTexture(ref Texture2D tex, bool mipChain = false)
             {
                 if (tex.isReadable)
-                    return tex;
+                    return false;
 
                 Texture2D readable;
+                bool linear = !tex.isDataSRGB;
 
                 // No blit is required if the source texture is uncompressed and in the correct format
                 var format = tex.format;
                 if (format == TextureFormat.RGB24 || format == TextureFormat.RGBA32)
                 {
                     readable = new Texture2D(tex.width, tex.height, format,
-                        mipChain, linear: !tex.isDataSRGB, createUninitialized: true);
+                        mipChain, linear, createUninitialized: true);
 
                     Graphics.CopyTexture(tex, readable);
-                    return readable;
+                    tex = readable;
+                    return true;
                 }
 
                 RenderTexture rt = RenderTexture.GetTemporary(tex.width, tex.height, depthBuffer: 0,
-                    RenderTextureFormat.Default, RenderTextureReadWrite.Linear);
+                    RenderTextureFormat.Default, linear ? RenderTextureReadWrite.Linear : RenderTextureReadWrite.sRGB);
 
                 Graphics.Blit(tex, rt);
                 RenderTexture previous = RenderTexture.active;
                 RenderTexture.active = rt;
 
                 readable = new Texture2D(tex.width, tex.height, TextureFormat.RGBA32,
-                    mipChain, linear: !tex.isDataSRGB, createUninitialized: true);
+                    mipChain, linear, createUninitialized: true);
 
                 readable.ReadPixels(new Rect(x: 0, y: 0, rt.width, rt.height), destX: 0, destY: 0);
                 readable.Apply();
@@ -143,11 +145,12 @@ namespace Unity.HLODSystem
                 RenderTexture.active = previous;
                 RenderTexture.ReleaseTemporary(rt);
 
-                return readable;
+                tex = readable;
+                return true;
             }
 #endif // BUGFIX
 
-            void MakeTexture(TerrainLayer layer, Texture2D texture, Vector4 min, Vector4 max, DisposableList<WorkingTexture> results)
+            void MakeTexture(TerrainLayer layer, Texture2D? texture, Color min, Color max, DisposableList<WorkingTexture> results)
             {
                 if (texture == null)
                     return;
@@ -159,13 +162,8 @@ namespace Unity.HLODSystem
 
                 if (!linear)
                 {
-                    min.x = Mathf.Pow(min.x, 0.45f);
-                    min.y = Mathf.Pow(min.y, 0.45f);
-                    min.z = Mathf.Pow(min.z, 0.45f);
-
-                    max.x = Mathf.Pow(max.x, 0.45f);
-                    max.y = Mathf.Pow(max.y, 0.45f);
-                    max.z = Mathf.Pow(max.z, 0.45f);
+                    min = min.linear;
+                    max = max.linear;
                 }
 
 
@@ -182,27 +180,37 @@ namespace Unity.HLODSystem
                     textureImporter.SaveAndReimport();
                 }
 
+                bool dispose = false;
+
                 try
                 {
 #if BUGFIX
-                    texture = ReadTexture(texture, mipChain: true);
+                    dispose = ReadTexture(ref texture, mipChain: true);
 #endif // BUGFIX
 
-                    for (int i = 0; i < texture.mipmapCount; ++i)
+                    int textureWidth = texture.width;
+                    int textureHeight = texture.height;
+                    var format = texture.format;
+                    int mipmapCount = texture.mipmapCount;
+                    results.EnsureCapacity(mipmapCount);
+                    for (int i = 0; i < mipmapCount; ++i)
                     {
-                        int width = texture.width >> i;
-                        int height = texture.height >> i;
-                        WorkingTexture workingTexture = new WorkingTexture(Allocator.Persistent, texture.format, width, height, linear);
+                        int width = textureWidth >> i;
+                        int height = textureHeight >> i;
+                        WorkingTexture workingTexture = new WorkingTexture(Allocator.Persistent, format, width, height, linear);
                         Color[] colors = texture.GetPixels(i);
                         for (int y = 0; y < height; ++y)
                         {
                             for (int x = 0; x < width; ++x)
                             {
-                                workingTexture.SetPixel(x, y, colors[y * width + x]);
+                                workingTexture.SetPixel(x, y, colors[y * width + x] * max + min);
                             }
                         }
 
+#if OPTIMISATION // Remap in SetPixel()
+#else
                         RemapTexture(workingTexture, min, max);
+#endif // OPTIMISATION
                         results.Add(workingTexture);
                     }
                 }
@@ -214,6 +222,13 @@ namespace Unity.HLODSystem
                         textureImporter.textureType = type;
                         textureImporter.SaveAndReimport();
                     }
+
+#if BUGFIX
+                    if (dispose)
+                    {
+                        Object.DestroyImmediate(texture);
+                    }
+#endif // BUGFIX
                 }
             }
             
@@ -322,10 +337,15 @@ namespace Unity.HLODSystem
 
                 return mipmap;
             }
-#endif // UNUSED
 
             private void RemapTexture(WorkingTexture source, Color min, Color max)
             {
+#if OPTIMISATION
+                for (int i = 0, length = source.Width * source.Height; i < length; i++)
+                {
+                    source[i] = source[i] * max + min;
+                }
+#else
                 for (int y = 0; y < source.Height; ++y)
                 {
                     for (int x = 0; x < source.Width; ++x)
@@ -335,7 +355,9 @@ namespace Unity.HLODSystem
                         source.SetPixel(x, y, color);
                     }
                 }
+#endif // OPTIMISATION
             }
+#endif // UNUSED
 
             private DisposableList<WorkingTexture> m_diffuseTextures;
             private DisposableList<WorkingTexture> m_maskTextures;
@@ -432,7 +454,9 @@ namespace Unity.HLODSystem
             Vector3[] vertices =  new Vector3[(heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x)];
             Vector3[] normals = new Vector3[(heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x)];
             Vector2[] uvs = new Vector2[(heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x)];
-            int[] triangles = new int[(heightmap.Width - borderWidth2x - 1) * (heightmap.Height - borderWidth2x - 1) * 6];
+            var triangles = new NativeArray<int>(
+                (heightmap.Width - borderWidth2x - 1) * (heightmap.Height - borderWidth2x - 1) * 6,
+                Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
 
 
             int vi = 0;
@@ -480,6 +504,7 @@ namespace Unity.HLODSystem
             mesh.normals = normals;
             mesh.uv = uvs;
             mesh.SetTriangles(triangles, 0);
+            triangles.Dispose();
 
             return mesh;
         }
@@ -908,10 +933,15 @@ namespace Unity.HLODSystem
 
         private static void RemapUV(WorkingMesh mesh, Heightmap heightmap)
         {
+#if OPTIMISATION
+            var vertices = mesh.Vertices;
+            var uvs = mesh.UV;
+#else
             var vertices = mesh.vertices;
             var uvs = mesh.uv;
+#endif // OPTIMISATION
 
-            for (int i = 0; i < mesh.vertexCount; ++i)
+            for (int i = 0, vertexCount = mesh.vertexCount; i < vertexCount; ++i)
             {
                 Vector2 uv;
                 uv.x = (vertices[i].x - heightmap.Offset.x) / heightmap.Size.x;
@@ -920,7 +950,10 @@ namespace Unity.HLODSystem
                 //vertices[i].
             }
 
+#if OPTIMISATION
+#else
             mesh.uv = uvs;
+#endif // OPTIMISATION
         }
         private static int CalcBorderWidth(Heightmap heightmap, int distance,
             TerrainHLOD m_hlod)
@@ -1064,7 +1097,7 @@ namespace Unity.HLODSystem
                 if (groups.Count == 0)
                     continue;
                 
-                groups.Sort((g1, g2) => { return g2.EdgeList.Count - g1.EdgeList.Count; });
+                groups.Sort(static (g1, g2) => { return g2.EdgeList.Count - g1.EdgeList.Count; });
                 
                 //first group( longest group ) is outline. 
                 for (int i = 1; i < groups.Count; ++i)
@@ -1211,17 +1244,19 @@ namespace Unity.HLODSystem
                     m_terrainMaterialLowInstanceId = m_terrainMaterialLow.GetInstanceID();
                     m_terrainMaterialLowName = m_terrainMaterialLow.name;
 
-                    using (var m_alphamaps = new DisposableList<WorkingTexture>())
-                    using (var m_layers = new DisposableList<Layer>())
+                    Texture2D[] alphamapTextures = data.alphamapTextures;
+                    TerrainLayer[] terrainLayers = data.terrainLayers;
+                    using (var m_alphamaps = new DisposableList<WorkingTexture>(alphamapTextures.Length))
+                    using (var m_layers = new DisposableList<Layer>(terrainLayers.Length))
                     {
-                        for (int i = 0; i < data.alphamapTextures.Length; ++i)
+                        for (int i = 0; i < alphamapTextures.Length; ++i)
                         {
-                            m_alphamaps.Add(new WorkingTexture(Allocator.Persistent, data.alphamapTextures[i]));
+                            m_alphamaps.Add(new WorkingTexture(Allocator.Persistent, alphamapTextures[i]));
                         }
 
-                        for (int i = 0; i < data.terrainLayers.Length; ++i)
+                        for (int i = 0; i < terrainLayers.Length; ++i)
                         {
-                            m_layers.Add(new Layer(data.terrainLayers[i], m_hlod.ChunkSize));
+                            m_layers.Add(new Layer(terrainLayers[i], m_hlod.ChunkSize));
                         }
 
 
@@ -1236,11 +1271,11 @@ namespace Unity.HLODSystem
                         EditorUtility.DisplayProgressBar("Bake HLOD", "Create mesh", 0.0f);
 #endif // OPTIMISATION
 
-                        DisposableList<HLODBuildInfo> results = new DisposableList<HLODBuildInfo>();
-                        Queue<SpaceNode> trevelQueue = new Queue<SpaceNode>();
-                        Queue<int> parentQueue = new Queue<int>();
-                        Queue<string> nameQueue = new Queue<string>();
-                        Queue<int> depthQueue = new Queue<int>();
+                        using var results = new DisposableList<HLODBuildInfo>();
+                        var trevelQueue = new Queue<SpaceNode>();
+                        var parentQueue = new Queue<int>();
+                        var nameQueue = new Queue<string>();
+                        var depthQueue = new Queue<int>();
                         using var _0 = UnityEngine.Pool.ListPool<Material>.Get(out var materials);
                         foreach (var rootNode in rootNodeList)
                         {
@@ -1292,9 +1327,9 @@ namespace Unity.HLODSystem
                                     HLODBuildInfo info = buildInfos[i];
                                     m_queue.EnqueueJob(() =>
                                     {
-                                        List<Vector3> vertices = new List<Vector3>();
-                                        List<Vector3> normals = new List<Vector3>();
-                                        List<Vector2> uvs = new List<Vector2>();
+                                        var vertices = new List<Vector3>();
+                                        var normals = new List<Vector3>();
+                                        var uvs = new List<Vector2>();
                                         var tris = new List<int>();
                                         var edges = new List<Vector2Int>();
                                         var vertexIndces = new HashSet<int>();

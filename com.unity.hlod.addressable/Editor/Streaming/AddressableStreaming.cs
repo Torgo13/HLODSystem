@@ -233,7 +233,7 @@ namespace Unity.HLODSystem.Streaming
                         address = GetAddress(spaceNode.Objects[oi]);
                     }
                     
-                    if (address != null)
+                    if (!string.IsNullOrEmpty(address))
                     {
                         highId = addressableController.AddHighObject(address, spaceNode.Objects[oi]);
                     }
@@ -248,8 +248,8 @@ namespace Unity.HLODSystem.Streaming
                 {
                     if (rootDatas[infos[i].ParentIndex].GetRootObject(infos[i].Name) != null)
                     {
-                        string filename = $"{filenamePrefix}_group{infos[i].ParentIndex}.hlod";
-                        int lowId = addressableController.AddLowObject(filename + "[" + infos[i].Name + "]");
+                        string filename = $"{filenamePrefix}_group{infos[i].ParentIndex}.hlod[{infos[i].Name}]";
+                        int lowId = addressableController.AddLowObject(filename);
                         hlodTreeNode.LowObjectIds.Add(lowId);    
                     }
 
@@ -570,18 +570,18 @@ namespace Unity.HLODSystem.Streaming
             settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, entriesAdded, true);
         }
 
-        private string? GetAddress(Object obj)
+        private string GetAddress(Object obj)
         {
             if (AddressableAssetSettingsDefaultObject.Settings == null)
             {
-                return null;
+                return string.Empty;
             }
 
             var settings = AddressableAssetSettingsDefaultObject.GetSettings(true);
             string path = GetAssetPath(obj);
             
             if (string.IsNullOrEmpty(path))
-                return null;
+                return string.Empty;
 
             string guid = AssetDatabase.AssetPathToGUID(path);
             var entry = settings.FindAssetEntry(guid);
@@ -601,7 +601,7 @@ namespace Unity.HLODSystem.Streaming
 
             }
             
-            return null;
+            return string.Empty;
         }
 
         private string GetAssetPath(Object obj)

@@ -11,16 +11,18 @@ namespace Unity.HLODSystem.Utils
     {
         public static WorkingMesh ToWorkingMesh(this Mesh mesh, Allocator allocator)
         {
-            var bindposes = mesh.bindposes;
-            var wm = new WorkingMesh(allocator, mesh.vertexCount, mesh.triangles.Length, mesh.subMeshCount, bindposes?.Length ?? 0);
+            var bindposes = UnityEngine.Pool.ListPool<Matrix4x4>.Get();
+            mesh.GetBindposes(bindposes);
+            var wm = new WorkingMesh(allocator, mesh.vertexCount, mesh.triangles.Length, mesh.subMeshCount, bindposes.Count);
             mesh.ApplyToWorkingMesh(ref wm, bindposes);
-
+            UnityEngine.Pool.ListPool<Matrix4x4>.Release(bindposes);
             return wm;
         }
 
         // Taking bindposes optional parameter is ugly, but saves an additional array allocation if it was already
         // accessed to get the length
-        public static void ApplyToWorkingMesh(this Mesh mesh, ref WorkingMesh wm, Matrix4x4[]? bindposes = null)
+        public static void ApplyToWorkingMesh(this Mesh mesh, ref WorkingMesh wm,
+            System.Collections.Generic.List<Matrix4x4> bindposes)
         {
             wm.indexFormat = mesh.indexFormat;
 #if OPTIMISATION
@@ -32,6 +34,7 @@ namespace Unity.HLODSystem.Utils
             var uv3 = UnityEngine.Pool.ListPool<Vector2>.Get();
             var uv4 = UnityEngine.Pool.ListPool<Vector2>.Get();
             var colors = UnityEngine.Pool.ListPool<Color>.Get();
+            var boneWeights = UnityEngine.Pool.ListPool<BoneWeight>.Get();
             mesh.GetVertices(vertices);
             mesh.GetNormals(normals);
             mesh.GetTangents(tangents);
@@ -40,7 +43,8 @@ namespace Unity.HLODSystem.Utils
             mesh.GetUVs(2, uv3);
             mesh.GetUVs(3, uv4);
             mesh.GetColors(colors);
-            wm.CopyFrom(vertices, normals, tangents, uv, uv2, uv3, uv4, colors);
+            mesh.GetBoneWeights(boneWeights);
+            wm.CopyFrom(vertices, normals, tangents, uv, uv2, uv3, uv4, colors, bindposes, boneWeights);
             UnityEngine.Pool.ListPool<Vector3>.Release(vertices);
             UnityEngine.Pool.ListPool<Vector3>.Release(normals);
             UnityEngine.Pool.ListPool<Vector4>.Release(tangents);
@@ -49,6 +53,7 @@ namespace Unity.HLODSystem.Utils
             UnityEngine.Pool.ListPool<Vector2>.Release(uv3);
             UnityEngine.Pool.ListPool<Vector2>.Release(uv4);
             UnityEngine.Pool.ListPool<Color>.Release(colors);
+            UnityEngine.Pool.ListPool<BoneWeight>.Release(boneWeights);
 #else
             wm.vertices = mesh.vertices;
             wm.normals = mesh.normals;
@@ -58,11 +63,10 @@ namespace Unity.HLODSystem.Utils
             wm.uv3 = mesh.uv3;
             wm.uv4 = mesh.uv4;
             wm.colors = mesh.colors;
-#endif // OPTIMISATION
             wm.boneWeights = mesh.boneWeights;
-            wm.bindposes = bindposes ?? mesh.bindposes;
+#endif // OPTIMISATION
             wm.subMeshCount = mesh.subMeshCount;
-            var triangles = new System.Collections.Generic.List<int>();
+            using var _0 = UnityEngine.Pool.ListPool<int>.Get(out var triangles);
             for (int i = 0; i < mesh.subMeshCount; i++)
             {
                 triangles.Clear();
@@ -106,16 +110,100 @@ namespace Unity.HLODSystem.Utils
                 m_Vertices.GetSubArray(0, vertexCount).CopyFrom(value);
             }
         }
-        public NativeArray<int> Triangles => m_Triangles.GetSubArray(0, trianglesCount);
-        public NativeArray<Vector3> Normals => m_Normals.GetSubArray(0, normalsCount);
-        public NativeArray<Vector4> Tangents => m_Tangents.GetSubArray(0, tangentsCount);
-        public NativeArray<Vector2> UV => m_UV.GetSubArray(0, uvCount);
-        public NativeArray<Vector2> UV2 => m_UV2.GetSubArray(0, uv2Count);
-        public NativeArray<Vector2> UV3 => m_UV3.GetSubArray(0, uv3Count);
-        public NativeArray<Vector2> UV4 => m_UV4.GetSubArray(0, uv4Count);
-        public NativeArray<Color> Colors => m_Colors.GetSubArray(0, colorsCount);
-        public NativeArray<BoneWeight> BoneWeights => m_BoneWeights.GetSubArray(0, boneWeightsCount);
-        public NativeArray<Matrix4x4> Bindposes => m_Bindposes.GetSubArray(0, bindposesCount);
+        public NativeArray<Vector3> Normals
+        {
+            get => m_Normals.GetSubArray(0, normalsCount);
+            set
+            {
+                normalsCount = value.Length;
+                m_Normals.GetSubArray(0, normalsCount).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector4> Tangents
+        {
+            get => m_Tangents.GetSubArray(0, tangentsCount);
+            set
+            {
+                tangentsCount = value.Length;
+                m_Tangents.GetSubArray(0, tangentsCount).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector2> UV
+        {
+            get => m_UV.GetSubArray(0, uvCount);
+            set
+            {
+                uvCount = value.Length;
+                m_UV.GetSubArray(0, uvCount).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector2> UV2
+        {
+            get => m_UV2.GetSubArray(0, uv2Count);
+            set
+            {
+                uv2Count = value.Length;
+                m_UV2.GetSubArray(0, uv2Count).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector2> UV3
+        {
+            get => m_UV3.GetSubArray(0, uv3Count);
+            set
+            {
+                uv3Count = value.Length;
+                m_UV3.GetSubArray(0, uv3Count).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector2> UV4
+        {
+            get => m_UV4.GetSubArray(0, uv4Count);
+            set
+            {
+                uv4Count = value.Length;
+                m_UV4.GetSubArray(0, uv4Count).CopyFrom(value);
+            }
+        }
+        public NativeArray<Color> Colors
+        {
+            get => m_Colors.GetSubArray(0, colorsCount);
+            set
+            {
+                colorsCount = value.Length;
+                m_Colors.GetSubArray(0, colorsCount).CopyFrom(value);
+            }
+        }
+        public NativeArray<BoneWeight> BoneWeights
+        {
+            get => m_BoneWeights.GetSubArray(0, boneWeightsCount);
+            set
+            {
+                boneWeightsCount = value.Length;
+                m_BoneWeights.GetSubArray(0, boneWeightsCount).CopyFrom(value);
+            }
+        }
+        public NativeArray<Matrix4x4> Bindposes
+        {
+            get => m_Bindposes.GetSubArray(0, bindposesCount);
+            set
+            {
+                bindposesCount = value.Length;
+                m_Bindposes.GetSubArray(0, bindposesCount).CopyFrom(value);
+            }
+        }
+        public int TrianglesCount => trianglesCount;
+#if UNUSED
+        public NativeArray<int> Triangles
+        {
+            get => m_Triangles.GetSubArray(0, trianglesCount);
+            set
+            {
+                trianglesCount = value.Length;
+                m_Triangles.GetSubArray(0, trianglesCount).CopyFrom(value);
+            }
+        }
+#endif // UNUSED
+
         public NativeArray<int> GetTrianglesNative(int submesh)
         {
             if (submesh < m_SubmeshOffset.Length)
@@ -151,7 +239,9 @@ namespace Unity.HLODSystem.Utils
             System.Collections.Generic.List<Vector2>? uv2 = null,
             System.Collections.Generic.List<Vector2>? uv3 = null,
             System.Collections.Generic.List<Vector2>? uv4 = null,
-            System.Collections.Generic.List<Color>? colors = null)
+            System.Collections.Generic.List<Color>? colors = null,
+            System.Collections.Generic.List<Matrix4x4>? bindposes = null,
+            System.Collections.Generic.List<BoneWeight>? boneWeights = null)
         {
             vertexCount = vertices.Count;
             for (int i = 0; i < vertexCount; i++)
@@ -165,10 +255,13 @@ namespace Unity.HLODSystem.Utils
                 m_Normals[i] = normals[i];
             }
 
-            tangentsCount = tangents.Count;
-            for (int i = 0; i < tangentsCount; i++)
+            if (tangents != null)
             {
-                m_Tangents[i] = tangents[i];
+                tangentsCount = tangents.Count;
+                for (int i = 0; i < tangentsCount; i++)
+                {
+                    m_Tangents[i] = tangents[i];
+                }
             }
 
             if (uv != null)
@@ -213,6 +306,24 @@ namespace Unity.HLODSystem.Utils
                 for (int i = 0; i < colorsCount; i++)
                 {
                     m_Colors[i] = colors[i];
+                }
+            }
+
+            if (bindposes != null)
+            {
+                bindposesCount = bindposes.Count;
+                for (int i = 0; i < bindposesCount; i++)
+                {
+                    m_Bindposes[i] = bindposes[i];
+                }
+            }
+
+            if (boneWeights != null)
+            {
+                boneWeightsCount = boneWeights.Count;
+                for (int i = 0; i < boneWeightsCount; i++)
+                {
+                    m_BoneWeights[i] = boneWeights[i];
                 }
             }
         }
@@ -785,9 +896,9 @@ namespace Unity.HLODSystem.Utils
         
         public void ApplyToMesh(Mesh mesh)
         {
-            mesh.indexFormat = indexFormat;
-            if (vertexCount > 65535)
-                mesh.indexFormat = IndexFormat.UInt32;
+            mesh.indexFormat = vertexCount > ushort.MaxValue
+                ? IndexFormat.UInt32
+                : indexFormat;
 
 #if OPTIMISATION
             mesh.SetVertices(m_Vertices.GetSubArray(0, vertexCount));
@@ -799,7 +910,8 @@ namespace Unity.HLODSystem.Utils
             mesh.SetUVs(3, m_UV4.GetSubArray(0, uv4Count));
             mesh.SetColors(m_Colors.GetSubArray(0, colorsCount));
             mesh.boneWeights = boneWeights;
-            mesh.SetBindposes(m_Bindposes.GetSubArray(0, bindposesCount));
+            if (bindposesCount != 0)
+                mesh.SetBindposes(m_Bindposes.GetSubArray(0, bindposesCount));
 #else
             mesh.vertices = vertices;
             mesh.normals = normals;
@@ -815,7 +927,7 @@ namespace Unity.HLODSystem.Utils
             mesh.subMeshCount = subMeshCount;
             for (int i = 0; i < subMeshCount; i++)
             {
-                mesh.SetIndices(GetTrianglesNative(i), MeshTopology.Triangles, i);
+                mesh.SetIndices(GetTrianglesNative(i), MeshTopology.Triangles, i, calculateBounds: false);
             }
             mesh.name = name;
             mesh.bounds = bounds;

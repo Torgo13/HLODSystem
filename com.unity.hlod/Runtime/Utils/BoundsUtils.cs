@@ -12,7 +12,7 @@ namespace Unity.HLODSystem.Utils
             Matrix4x4 matrix = transform.worldToLocalMatrix;
 
 #if OPTIMISATION
-            System.Span<Vector3> points = stackalloc[]
+            System.Span<Vector3> points = stackalloc Vector3[]
 #else
             Vector3[] points = new[]
 #endif // OPTIMISATION

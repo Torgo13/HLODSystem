@@ -36,10 +36,13 @@ namespace Unity.HLODSystem.Streaming
         #endregion
         
         #region Unity Events
+#if OPTIMISATION
+#else
         public void Awake()
         {
             m_spaceManager = new QuadTreeSpaceManager();
         }
+#endif // OPTIMISATION
 
         public void Start()
         {
