@@ -8,8 +8,15 @@ namespace Unity.HLODSystem.Cache
     class SimplifiedMesh
     {
         public float Quality;
-        public string SimplifierType = string.Empty;
+        public string SimplifierType;
         public Mesh Mesh;
+
+        public SimplifiedMesh(float quality, string simplifierType, Mesh mesh)
+        {
+            Quality = quality;
+            SimplifierType = simplifierType;
+            Mesh = mesh;
+        }
     }
 
     class SimplifiedMeshList : ScriptableObject
@@ -20,12 +27,7 @@ namespace Unity.HLODSystem.Cache
 
         public void AddMesh(float quality, Type simplifierType, Mesh mesh)
         {
-            m_MeshList.Add(new SimplifiedMesh()
-            {
-                Quality = quality,
-                SimplifierType = simplifierType.AssemblyQualifiedName!,
-                Mesh = mesh,
-            });
+            m_MeshList.Add(new SimplifiedMesh(quality, simplifierType.AssemblyQualifiedName!, mesh));
         }
 
         public SimplifiedMesh? GetMesh(float quality, Type simplifierType)

@@ -41,24 +41,7 @@ namespace Unity.HLODSystem.Streaming
             public string Key = string.Empty;
             public bool LoadFromCustom;
             public AsyncOperationHandle<GameObject> Handle;
-#if !UNITY_6000_3_OR_NEWER
-            private GameObject _instance;
-            public GameObject Instance
-            {
-                get
-                {
-                    if (_instance == null && Handle.IsValid() && Handle.IsDone)
-                    {
-                        _instance = Handle.Result;
-                    }
-
-                    return _instance;
-                }
-                set => _instance = value;
-            }
-#else
             public GameObject? Instance;
-#endif // UNITY_6000_3_OR_NEWER
         }
 
         private Dictionary<int, LoadInfo> m_highObjectLoadInfos = new Dictionary<int, LoadInfo>();
@@ -120,10 +103,10 @@ namespace Unity.HLODSystem.Streaming
             ChildObject obj = new ChildObject();
             obj.GameObject = origin;
             obj.Address = address;
-            obj.Parent = origin.transform.parent;
-            obj.Position = origin.transform.localPosition;
-            obj.Rotation = origin.transform.localRotation;
-            obj.Scale = origin.transform.localScale;
+            var t = origin.transform;
+            obj.Parent = t.parent;
+            t.GetLocalPositionAndRotation(out obj.Position, out obj.Rotation);
+            obj.Scale = t.localScale;
 
             m_highObjects.Add(obj);
             return id;

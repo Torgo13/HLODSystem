@@ -27,7 +27,7 @@ namespace Unity.HLODSystem
         {
         }
 
-        public void Batch(Transform rootTransform, DisposableList<HLODBuildInfo> targets, Action<float> onProgress)
+        public void Batch(Transform rootTransform, DisposableList<HLODBuildInfo> targets, Action<float>? onProgress)
         {
             for (int i = 0; i < targets.Count; ++i)
             {
@@ -41,8 +41,8 @@ namespace Unity.HLODSystem
 
         private void Combine(Transform rootTransform, HLODBuildInfo info)
         {
-            var materialTable = new Dictionary<string, WorkingMaterial>();
-            var combineInfos = new Dictionary<string, List<MeshCombiner.CombineInfo>>();           
+            var materialTable = UnityEngine.Pool.DictionaryPool<string, WorkingMaterial>.Get();
+            var combineInfos = UnityEngine.Pool.DictionaryPool<string, List<MeshCombiner.CombineInfo>>.Get();           
 
             var hlodWorldToLocal = rootTransform.worldToLocalMatrix;
             
@@ -118,6 +118,9 @@ namespace Unity.HLODSystem
                 UnityEngine.Pool.ListPool<Color>.Release(colors);
                 UnityEngine.Pool.ListPool<int>.Release(triangles);
             }
+
+            UnityEngine.Pool.DictionaryPool<string, List<MeshCombiner.CombineInfo>>.Release(combineInfos);
+            UnityEngine.Pool.DictionaryPool<string, WorkingMaterial>.Release(materialTable);
         }
 
         static void OnGUI(HLOD hlod, bool isFirst)

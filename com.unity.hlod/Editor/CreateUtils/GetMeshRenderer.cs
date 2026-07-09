@@ -24,22 +24,13 @@ namespace Unity.HLODSystem
             
             public MeshRendererCalculator(List<GameObject> targetGameObjects)
             {
-                using var _0 = UnityEngine.Pool.ListPool<HLODMeshSetter>.Get(out var meshSetters);
-                using var _1 = UnityEngine.Pool.ListPool<MeshRenderer>.Get(out var meshRenderers);
-                using var _2 = UnityEngine.Pool.ListPool<LODGroup>.Get(out var lodGroups);
                 for (int oi = 0; oi < targetGameObjects.Count; ++oi)
                 {
                     var target = targetGameObjects[oi];
                     
-                    meshSetters.Clear();
-                    meshRenderers.Clear();
-                    lodGroups.Clear();
-                    target.GetComponentsInChildren<HLODMeshSetter>(meshSetters);
-                    target.GetComponentsInChildren<MeshRenderer>(meshRenderers);
-                    target.GetComponentsInChildren<LODGroup>(lodGroups);
-                    m_meshSetters.AddRange(meshSetters);
-                    m_meshRenderers.AddRange(meshRenderers);
-                    m_lodGroups.AddRange(lodGroups);
+                    target.GetComponentsInChildren<HLODMeshSetter>(m_meshSetters);
+                    target.GetComponentsInChildren<MeshRenderer>(m_meshRenderers);
+                    target.GetComponentsInChildren<LODGroup>(m_lodGroups);
                 }
 
                 RemoveDisabled(m_meshSetters);
@@ -106,6 +97,9 @@ namespace Unity.HLODSystem
                 RemoveUnderMeshSetters(setter);
             }
 
+            private void AddResultFromLODGroup(LODGroup lodGroup, float minObjectSize)
+                => AddReusltFromLODGroup(lodGroup, minObjectSize);
+
             private void AddReusltFromLODGroup(LODGroup lodGroup, float minObjectSize)
             {
                 LOD[] lods = lodGroup.GetLODs();
@@ -121,7 +115,7 @@ namespace Unity.HLODSystem
                         continue;
 
                     var size = mr.bounds.size;
-                    float max = Mathf.Max(size.x, size.y, size.z);
+                    float max = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
                     if (max < minObjectSize)
                         continue;
 

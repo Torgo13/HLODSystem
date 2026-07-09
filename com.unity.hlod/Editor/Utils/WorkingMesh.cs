@@ -204,6 +204,7 @@ namespace Unity.HLODSystem.Utils
         }
 #endif // UNUSED
 
+        /// <remarks>Background thread</remarks>
         public NativeArray<int> GetTrianglesNative(int submesh)
         {
             if (submesh < m_SubmeshOffset.Length)
@@ -219,6 +220,7 @@ namespace Unity.HLODSystem.Utils
             return new NativeArray<int>(0, Allocator.Temp);
         }
 
+        /// <remarks>Background thread</remarks>
         public void CopyFrom(WorkingMesh other)
         {
             vertexCount = other.vertexCount;
@@ -231,6 +233,7 @@ namespace Unity.HLODSystem.Utils
             m_UV.GetSubArray(0, uvCount).CopyFrom(other.m_UV.GetSubArray(0, uvCount));
         }
 
+        /// <remarks>Background thread</remarks>
         public void CopyFrom(
             System.Collections.Generic.List<Vector3> vertices,
             System.Collections.Generic.List<Vector3> normals,
@@ -689,7 +692,8 @@ namespace Unity.HLODSystem.Utils
 
             triangles.CopyTo(m_Triangles.AsSpan().Slice(preSliceLength, triangles.Length));
         }
-        
+
+        /// <remarks>Background thread</remarks>
         public void SetTriangles(System.Collections.Generic.List<int> triangles, int submesh)
         {
             if (submesh >= subMeshCount)
@@ -731,8 +735,8 @@ namespace Unity.HLODSystem.Utils
             {
                 var offset = preSliceLength + triangles.Count;
                 m_SubmeshOffset[submesh + 1] = offset;
-                var sourceSlice = new NativeSlice<int>(m_Triangles, postSliceOffset, postSliceLength);
-                var destSlice = new NativeSlice<int>(m_Triangles, offset, postSliceLength);
+                var sourceSlice = m_Triangles.GetSubArray(postSliceOffset, postSliceLength);
+                var destSlice = m_Triangles.GetSubArray(offset, postSliceLength);
                 destSlice.CopyFrom(sourceSlice);
             }
 
@@ -758,6 +762,7 @@ namespace Unity.HLODSystem.Utils
             return new int[0];
         }
 
+        /// <remarks>Background thread</remarks>
         void GetTriangleRange(int submesh, out int start, out int stop)
         {
             if (submesh < m_SubmeshOffset.Length)
@@ -775,6 +780,7 @@ namespace Unity.HLODSystem.Utils
             return;
         }
 
+        /// <remarks>Background thread</remarks>
         public WorkingMesh(Allocator allocator, int maxVertices, int maxTriangles, int maxSubmeshes, int maxBindposes) 
         {
 #if OPTIMISATION
@@ -799,6 +805,7 @@ namespace Unity.HLODSystem.Utils
 
 #if OPTIMISATION
         private static readonly int ChannelCount = Enum.GetValues(typeof(Channel)).Length;
+
         public WorkingMesh(Allocator allocator,
             ReadOnlySpan<Vector3> vertices, ReadOnlySpan<Vector3> normals, ReadOnlySpan<Vector4> tangents,
             ReadOnlySpan<Vector2> uvs, ReadOnlySpan<Vector2> uv2, ReadOnlySpan<Vector2> uv3, ReadOnlySpan<Vector2> uv4,
@@ -840,6 +847,7 @@ namespace Unity.HLODSystem.Utils
         }
 #endif // OPTIMISATION
 
+        /// <remarks>Background thread</remarks>
         public void Dispose()
         {
             if (m_Counts.IsCreated)

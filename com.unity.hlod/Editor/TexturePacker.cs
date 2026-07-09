@@ -255,7 +255,8 @@ namespace Unity.HLODSystem
                 return minTextureCount;
             }
 
-            public TextureAtlas? CreateAtlas(TextureFormat format, int packTextureSize, bool linear)
+            public TextureAtlas? CreateAtlas(TextureFormat format, int packTextureSize, bool linear,
+                DisposableList<MaterialTexture> resizedTextures, DisposableList<TextureCombiner> combiners)
             {
                 if (m_textures.Count == 0)
                 {
@@ -266,8 +267,8 @@ namespace Unity.HLODSystem
                 int itemSize = packTextureSize / itemCount;
                 TextureAtlas atlas;
 
-                using (DisposableList<MaterialTexture> resizedTextures = CreateResizedTextures(itemSize, itemSize))
-                using (DisposableList<TextureCombiner> combiners = new DisposableList<TextureCombiner>(resizedTextures.Count))
+                _ = CreateResizedTextures(itemSize, itemSize, m_textures, resizedTextures);
+                combiners.Dispose();
                 {
                     List<Rect> uvs = new List<Rect>(resizedTextures.Count);
                     List<Guid> guids = new List<Guid>(resizedTextures.Count);
@@ -300,9 +301,10 @@ namespace Unity.HLODSystem
                 return atlas;
             }
 
-            private DisposableList<MaterialTexture> CreateResizedTextures(int newWidth, int newHeight)
+            private static DisposableList<MaterialTexture> CreateResizedTextures(int newWidth, int newHeight,
+                DisposableList<MaterialTexture> m_textures, DisposableList<MaterialTexture> resized)
             {
-                DisposableList<MaterialTexture> resized = new DisposableList<MaterialTexture>(m_textures.Count);
+                resized.Dispose();
                 for (int i = 0; i < m_textures.Count; ++i)
                 {
                     MaterialTexture newMT = new MaterialTexture();
@@ -314,9 +316,12 @@ namespace Unity.HLODSystem
                         WorkingTexture resizedTexture =
                             m_textures[i][k].Resize(Allocator.Persistent, targetWidth, targetHeight); 
                         newMT.Add(resizedTexture);
+#if BUGFIX // All elements of resized will be disposed anyway
+#else
                         resizedTexture.Dispose();
+#endif // BUGFIX
                     }
-                    
+
                     resized.Add(newMT);
                 }
 
@@ -398,12 +403,16 @@ namespace Unity.HLODSystem
 
 
             public List<TextureAtlas> CreateTextureAtlases(
+                DisposableList<MaterialTexture> resizedTextures, DisposableList<TextureCombiner> combiners,
                 List<TextureAtlas> atlases)
             {
+                resizedTextures.Dispose();
+                combiners.Dispose();
                 atlases.Clear();
                 for (int i = 0; i < m_sources.Count; ++i)
                 {
-                    TextureAtlas? item = m_sources[i].CreateAtlas(m_format, m_packTextureSize, m_linear);
+                    TextureAtlas? item = m_sources[i].CreateAtlas(m_format, m_packTextureSize, m_linear,
+                        resizedTextures, combiners);
                     if ( item != null )
                         atlases.Add(item);
                 }
@@ -436,12 +445,12 @@ namespace Unity.HLODSystem
 
          
         //TODO: must clear what the ownership of texture.
-        public void AddTextureGroup(object obj, List<MaterialTexture> textures)
+        public void AddTextureGroup(object obj, Dictionary<Guid, MaterialTexture> textures)
         {
             DisposableList<MaterialTexture> copyTextures = new DisposableList<MaterialTexture>(textures.Count);
-            for (int i = 0; i < textures.Count; ++i)
+            foreach (var texture in textures)
             {
-                copyTextures.Add(textures[i].Clone());
+                copyTextures.Add(texture.Value.Clone());
             }
             Source source = new Source(obj, copyTextures);
             m_sources.Add(source);
@@ -461,14 +470,22 @@ namespace Unity.HLODSystem
                     taskGroups[maxCount].AddSource(m_sources[i]);
                 }
 
-                using var _0 = UnityEngine.Pool.ListPool<Score>.Get(out var scoreList);
-                using var _1 = UnityEngine.Pool.ListPool<TextureAtlas>.Get(out var atlases);
+                var scoreList = UnityEngine.Pool.ListPool<Score>.Get();
+                var atlases = UnityEngine.Pool.ListPool<TextureAtlas>.Get();
+                var resizedTextures = new DisposableList<MaterialTexture>();
+                var combiners = new DisposableList<TextureCombiner>();
+
                 //Second, we should figure out which group should be combined from each taskGroup.
                 foreach (var taskGroup in taskGroups.Values)
                 {
                     taskGroup.CombineSources(scoreList);
-                    m_atlas.AddRange(taskGroup.CreateTextureAtlases(atlases));
+                    m_atlas.AddRange(taskGroup.CreateTextureAtlases(resizedTextures, combiners, atlases));
                 }
+
+                UnityEngine.Pool.ListPool<Score>.Release(scoreList);
+                UnityEngine.Pool.ListPool<TextureAtlas>.Release(atlases);
+                resizedTextures.Dispose();
+                combiners.Dispose();
             }
         }
 

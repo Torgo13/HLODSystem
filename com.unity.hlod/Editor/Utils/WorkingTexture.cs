@@ -26,6 +26,8 @@ namespace Unity.HLODSystem.Utils
         
         private WorkingTextureBuffer m_buffer;
         public Color this[int index] { get => m_buffer[index]; set => m_buffer[index] = value; }
+        public NativeArray<Color> Pixels => m_buffer.Pixels;
+        public NativeArray<byte> Bytes => m_buffer.Pixels.Reinterpret<byte>(4 * sizeof(float));
 
         public string Name
         {
@@ -54,6 +56,8 @@ namespace Unity.HLODSystem.Utils
         {
             m_buffer = buffer;
         }
+
+        /// <remarks>Background thread</remarks>
         public WorkingTexture(Allocator allocator, TextureFormat format, int width, int height, bool linear)
         {
             m_buffer = WorkingTextureBufferManager.Create(allocator, format, width, height, linear);
@@ -94,6 +98,7 @@ namespace Unity.HLODSystem.Utils
                 
         }
 
+        /// <remarks>Background thread</remarks>
         public void SetPixel(int x, int y, Color color)
         {
             MakeWriteable();
@@ -108,6 +113,7 @@ namespace Unity.HLODSystem.Utils
             return m_buffer.GetPixel(x, y);
         }
 
+        /// <remarks>Background thread</remarks>
         public Color GetPixel(float u, float v)
         {
             float x = u * (Width - 1);
@@ -163,8 +169,7 @@ namespace Unity.HLODSystem.Utils
             return wt;
         }
 
-       
-
+        /// <remarks>Background thread</remarks>
         private void MakeWriteable()
         {
             if (m_buffer.GetRefCount() > 1)
@@ -208,6 +213,7 @@ namespace Unity.HLODSystem.Utils
             return buffer;
         }
 
+        /// <remarks>Background thread</remarks>
         static
         public WorkingTextureBuffer Create(Allocator allocator, TextureFormat format, int width, int height, bool linear)
         {
@@ -216,6 +222,7 @@ namespace Unity.HLODSystem.Utils
             return buffer;
         }
 
+        /// <remarks>Background thread</remarks>
         static
         public WorkingTextureBuffer Clone(WorkingTextureBuffer buffer)
         {
@@ -224,10 +231,12 @@ namespace Unity.HLODSystem.Utils
             return nb;
         }
 
+        /// <remarks>Background thread</remarks>
         public void Destroy(WorkingTextureBuffer buffer)
         {
             if (buffer.HasSource(out var source))
             {
+                _ =
                 m_cache.Remove(source);
             }
         }
@@ -242,7 +251,9 @@ namespace Unity.HLODSystem.Utils
         private bool m_linear;
         
         private NativeArray<Color> m_pixels;
-        
+        public NativeArray<Color> Pixels => m_pixels;
+        public Color this[int index] { get => m_pixels[index]; set => m_pixels[index] = value; }
+
         private int m_refCount;
         private Texture2D? m_source;
 
@@ -252,9 +263,9 @@ namespace Unity.HLODSystem.Utils
 
         private string name = string.Empty;
         public string Name { get => name; set => name = value; }
-        public Color this[int index] { get => m_pixels[index]; set => m_pixels[index] = value; }
 
         public TextureFormat Format => m_format;
+        public int Width => m_width;
         public int Widht => m_width;
         public int Height => m_height;
         public bool Linear
@@ -269,7 +280,7 @@ namespace Unity.HLODSystem.Utils
             set => m_wrapMode = value;
         }
 
-
+        /// <remarks>Background thread</remarks>
         public WorkingTextureBuffer(Allocator allocator, TextureFormat format, int width, int height, bool linear)
         {
             m_allocator = allocator;
@@ -292,12 +303,14 @@ namespace Unity.HLODSystem.Utils
             m_guid = GUIDUtils.ObjectToGUID(source);
         }
 
+        /// <remarks>Background thread</remarks>
         public WorkingTextureBuffer Clone()
         {
             WorkingTextureBuffer buffer = new WorkingTextureBuffer(m_allocator, m_format, m_width, m_height, m_linear);
             buffer.Blit(this, 0, 0);
             return buffer;
         }
+
         public Texture2D ToTexture()
         {
             Texture2D texture = new Texture2D(m_width, m_height, m_format, false, m_linear);
@@ -313,27 +326,39 @@ namespace Unity.HLODSystem.Utils
             return m_guid;
         }
 
+        /// <remarks>Background thread</remarks>
         public bool HasSource(
             [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Texture2D? source)
         {
             source = m_source;
             return m_source != null;
         }
+
         public Texture2D? GetSource()
         {
             return m_source;
         }
 
+        /// <remarks>Background thread</remarks>
         public void AddRef()
         {
+#if BUGFIX
+            _ = System.Threading.Interlocked.Increment(ref m_refCount);
+#else
             m_refCount += 1;
+#endif // BUGFIX
         }
 
+        /// <remarks>Background thread</remarks>
         public void Release()
         {
+#if BUGFIX
+            if (0 == System.Threading.Interlocked.Decrement(ref m_refCount))
+#else
             m_refCount -= 1;
 
             if (m_refCount == 0)
+#endif // BUGFIX
             {
                 WorkingTextureBufferManager.Instance.Destroy(this);
                 Dispose();
@@ -344,23 +369,27 @@ namespace Unity.HLODSystem.Utils
         {
             return m_refCount;
         }
-        
+
+        /// <remarks>Background thread</remarks>
         public void Dispose()
         {
             if( m_pixels.IsCreated )
                 m_pixels.Dispose();
         }
 
+        /// <remarks>Background thread</remarks>
         public void SetPixel(int x, int y, Color color)
         {
             m_pixels[y * m_width + x] = color;
         }
 
+        /// <remarks>Background thread</remarks>
         public Color GetPixel(int x, int y)
         {
             return m_pixels[y * m_width + x];
         }
 
+        /// <remarks>Background thread</remarks>
         public void Blit(WorkingTextureBuffer source, int x, int y)
         {
             int width = source.m_width;

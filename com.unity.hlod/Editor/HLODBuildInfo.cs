@@ -84,7 +84,8 @@ namespace Unity.HLODSystem
 
                 return heightmap;
             }
-
+        
+            /// <remarks>Background thread</remarks>
             public Vector3 GetInterpolatedNormal(float x, float y)
             {
                 float fx = x * (m_width - 1) + 1;
@@ -108,12 +109,14 @@ namespace Unity.HLODSystem
                 return value;
             }
 
-
+        
+            /// <remarks>Background thread</remarks>
             Vector3 CalculateNormalSobel(int x, int y)
             {
                 return CalculateNormalSobel(x, y, m_scale);
             }
-
+        
+            /// <remarks>Background thread</remarks>
             float CalculateHeight(int x, int y, float scale)
             {
                 x = Mathf.Clamp(x, 0, m_width + 1);
@@ -121,7 +124,8 @@ namespace Unity.HLODSystem
                 return m_heights[y, x] * scale;
             }
 
-
+        
+            /// <remarks>Background thread</remarks>
             Vector3 CalculateNormalSobel(int x, int y, Vector3 scale)
             {
                 float dY, dX;

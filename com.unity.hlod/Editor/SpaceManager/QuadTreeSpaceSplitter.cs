@@ -10,12 +10,16 @@ namespace Unity.HLODSystem.SpaceManager
     {
         public static bool IsPartOf(this Bounds bounds, Bounds target)
         {
-            return (double) bounds.min.x >= (double) target.min.x &&
-                   (double) bounds.max.x <= (double) target.max.x &&
-                   (double) bounds.min.y >= (double) target.min.y &&
-                   (double) bounds.max.y <= (double) target.max.y &&
-                   (double) bounds.min.z >= (double) target.min.z &&
-                   (double) bounds.max.z <= (double) target.max.z;
+            var boundsMax = bounds.max;
+            var boundsMin = bounds.min;
+            var targetMax = target.max;
+            var targetMin = target.min;
+            return boundsMin.x >= targetMin.x &&
+                   boundsMax.x <= targetMax.x &&
+                   boundsMin.y >= targetMin.y &&
+                   boundsMax.y <= targetMax.y &&
+                   boundsMin.z >= targetMin.z &&
+                   boundsMax.z <= targetMax.z;
         }
     }
     public class QuadTreeSpaceSplitter : ISpaceSplitter
@@ -101,7 +105,7 @@ namespace Unity.HLODSystem.SpaceManager
             List<GameObject>? targetObjects, Action<float>? onProgress)
         {
             using var _0 = UnityEngine.Pool.ListPool<TargetInfo>.Get(out var targetInfos);
-            List<SpaceNode> nodes = new List<SpaceNode>();
+            List<SpaceNode> nodes;
             _ = CreateTargetInfoList(targetObjects, transform, targetInfos);
 
             if (m_useSubHLODTree == true)
@@ -111,6 +115,7 @@ namespace Unity.HLODSystem.SpaceManager
                 using var _2 = UnityEngine.Pool.ListPool<List<TargetInfo>>.Get(out var splittedTargetInfos);
                 _ = SplitTargetObjects(targetInfos, splittedBounds, splittedTargetInfos);
 
+                nodes = new List<SpaceNode>(splittedTargetInfos.Count);
                 float progressSize = 1.0f / splittedTargetInfos.Count; 
                 for (int i = 0; i < splittedTargetInfos.Count; ++i)
                 {
@@ -124,6 +129,7 @@ namespace Unity.HLODSystem.SpaceManager
             }
             else
             {
+                nodes = new List<SpaceNode>();
                 nodes.Add(CreateSpaceTreeImpl(initBounds, chunkSize, targetInfos, onProgress));
             }
 
@@ -222,14 +228,13 @@ namespace Unity.HLODSystem.SpaceManager
         {
 #if BUGFIX
             if (gameObjects == null)
-            {
-                return new List<TargetInfo>();
-            }
+                return targetInfos;
 #endif // BUGFIX
 
+            var renderers = new List<MeshRenderer>();
             for (int i = 0; i < gameObjects.Count; ++i)
             {
-                Bounds? bounds = CalculateBounds(gameObjects[i], transform);
+                Bounds? bounds = CalculateBounds(gameObjects[i], transform, renderers);
                 if ( bounds == null )
                     continue;
                 targetInfos.Add(new TargetInfo()
@@ -242,14 +247,16 @@ namespace Unity.HLODSystem.SpaceManager
             return targetInfos;
         }
 
-        private Bounds? CalculateBounds(GameObject obj, Transform transform)
+        private Bounds? CalculateBounds(GameObject obj, Transform transform,
+            List<MeshRenderer> renderers)
         {
-            MeshRenderer[] renderers = obj.GetComponentsInChildren<MeshRenderer>();
-            if (renderers.Length == 0)
+            renderers.Clear();
+            obj.GetComponentsInChildren<MeshRenderer>(renderers);
+            if (renderers.Count == 0)
                 return null;
 
             Bounds result = Utils.BoundsUtils.CalcLocalBounds(renderers[0], transform);
-            for (int i = 1; i < renderers.Length; ++i)
+            for (int i = 1; i < renderers.Count; ++i)
             {
                 result.Encapsulate(Utils.BoundsUtils.CalcLocalBounds(renderers[i], transform));
             }
@@ -260,22 +267,28 @@ namespace Unity.HLODSystem.SpaceManager
         private static List<Bounds> SplitBounds(Bounds bounds, float splitSize,
             List<Bounds> boundsList)
         {
-            int xcount = Mathf.CeilToInt(bounds.size.x / splitSize);
-            int zcount = Mathf.CeilToInt(bounds.size.z / splitSize);
+            var boundsSize = bounds.size;
+            int xcount = Mathf.CeilToInt(boundsSize.x / splitSize);
+            int zcount = Mathf.CeilToInt(boundsSize.z / splitSize);
 
-            float xsize = bounds.size.x / xcount;
-            float zsize = bounds.size.z / zcount;
+            float xsize = boundsSize.x / xcount;
+            float zsize = boundsSize.z / zcount;
 
-            Vector3 splitBoundSize = new Vector3(xsize, bounds.size.y, zsize);
-            
+            Vector3 splitBoundSize = new Vector3(xsize, boundsSize.y, zsize);
+
+            var boundsExtentsY = bounds.extents.y;
+            var boundsMin = bounds.min;
+            if (boundsList.Capacity < xcount * zcount)
+                boundsList.Capacity = xcount * zcount;
+
             for (int z = 0; z < zcount; ++z)
             {
                 for (int x = 0; x < xcount; ++x)
                 {
                     Vector3 center = new Vector3(
                         x * xsize + xsize * 0.5f,
-                        bounds.extents.y,
-                        z * zsize + zsize * 0.5f) + bounds.min;
+                        boundsExtentsY,
+                        z * zsize + zsize * 0.5f) + boundsMin;
                     
                     boundsList.Add(new Bounds(center,splitBoundSize));
                 }

@@ -11,23 +11,21 @@ namespace Unity.HLODSystem.Utils
     {
         //It must order by child first.
         //Because we need to make child prefab first.
-        public static List<T> GetComponentsInChildren<T>(GameObject root,
-            Queue<GameObject> queue, List<T> components) where T : Component
+        public static List<T> GetComponentsInChildren<T>(Transform root,
+            Queue<Transform> queue, List<T> components) where T : Component
         {
             LinkedList<T> result = new LinkedList<T>();
             queue.Clear();
             queue.Enqueue(root);
 
-            while (queue.Count > 0)
+            while (queue.TryDequeue(out Transform t))
             {
-                GameObject go = queue.Dequeue();
-                T component = go.GetComponent<T>();
-                if (component != null)
-                    result.AddFirst(component);
+                if (t.TryGetComponent(out T component))
+                    _ = result.AddFirst(component);
 
-                foreach (Transform child in go.transform)
+                foreach (Transform child in t)
                 {
-                    queue.Enqueue(child.gameObject);
+                    queue.Enqueue(child);
                 }
             }
 
@@ -35,7 +33,7 @@ namespace Unity.HLODSystem.Utils
             return components;
         }
 
-        public static List<GameObject> HLODTargets(GameObject root,
+        public static List<GameObject> HLODTargets(Transform root,
             List<GameObject> HLODTargets)
         {
             var targets = UnityEngine.Pool.ListPool<GameObject>.Get();
@@ -43,7 +41,7 @@ namespace Unity.HLODSystem.Utils
             List<HLODMeshSetter> meshSetters = UnityEngine.Pool.ListPool<HLODMeshSetter>.Get();
             List<LODGroup> lodGroups = UnityEngine.Pool.ListPool<LODGroup>.Get();
             List<MeshRenderer> meshRenderers = UnityEngine.Pool.ListPool<MeshRenderer>.Get();
-            Queue<GameObject> queue = new Queue<GameObject>();
+            var queue = new Queue<Transform>();
             _ = GetComponentsInChildren<HLODMeshSetter>(root, queue, meshSetters);
             _ = GetComponentsInChildren<LODGroup>(root, queue, lodGroups);
             //This contains all of the mesh renderers, so we need to remove the duplicated mesh renderer which in the LODGroup.
@@ -53,11 +51,16 @@ namespace Unity.HLODSystem.Utils
             var mr = UnityEngine.Pool.ListPool<MeshRenderer>.Get();
             for (int mi = 0; mi < meshSetters.Count; ++mi)
             {
+#if UNITY_6000_3_OR_NEWER
+                if (!meshSetters[mi].isActiveAndEnabled)
+                    continue;
+#else
                 if (meshSetters[mi].enabled == false)
                     continue;
                 if (meshSetters[mi].gameObject.activeInHierarchy == false)
                     continue;
-                
+#endif // UNITY_6000_3_OR_NEWER
+
                 targets.Add(meshSetters[mi].gameObject);
 
                 lg.Clear();
@@ -104,9 +107,10 @@ namespace Unity.HLODSystem.Utils
             //Combine several LODGroups and MeshRenderers belonging to Prefab into one.
             //Since the minimum unit of streaming is Prefab, it must be set to the minimum unit.
             var targetsByPrefab = UnityEngine.Pool.HashSetPool<GameObject>.Get();
+            var hlodRoot = root.gameObject;
             for (int ti = 0; ti < targets.Count; ++ti)
             {
-                var targetPrefab = GetCandidatePrefabRoot(root, targets[ti]);
+                var targetPrefab = GetCandidatePrefabRoot(hlodRoot, targets[ti]);
                 targetsByPrefab.Add(targetPrefab);
             }
 
@@ -147,16 +151,16 @@ namespace Unity.HLODSystem.Utils
         
         
         
-        public static T? CopyComponent<T>(T original, GameObject destination) where T : Component
+        public static T CopyComponent<T>(T original, GameObject destination) where T : Component
         {
             System.Type type = original.GetType();
-            Component copy = destination.AddComponent(type);
+            T copy = destination.AddComponent<T>();
             System.Reflection.FieldInfo[] fields = type.GetFields();
             foreach (System.Reflection.FieldInfo field in fields)
             {
                 field.SetValue(copy, field.GetValue(original));
             }
-            return copy as T;
+            return copy;
         }
 
         public static void CopyValues<T>(T source, T target)
@@ -183,7 +187,8 @@ namespace Unity.HLODSystem.Utils
             return path;
         }
 
-        private static readonly char[] splitChars = {'[', ']'};
+        private static readonly char[] splitChars = { '[', ']' };
+
         public static void ParseObjectPath(string path, out string mainPath, out string subAssetName)
         {
             string[] splittedStr = path.Split(splitChars);

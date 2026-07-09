@@ -87,8 +87,7 @@ namespace Unity.HLODSystem
                             UpdateProgress(ctx.assetPath, currentProgress++, maxProgress);
 
                             var so = serializableObjects[oi];
-                            GameObject go = new GameObject();
-                            go.name = so.Name;
+                            GameObject go = new GameObject(so.Name);
 
                             MeshFilter mf = go.AddComponent<MeshFilter>();
                             MeshRenderer mr = go.AddComponent<MeshRenderer>();
@@ -128,18 +127,20 @@ namespace Unity.HLODSystem
 
                             ctx.AddObjectToAsset(mesh.name, mesh);
 
-                            if (createdGameObjects.ContainsKey(go.name) == false)
-                                createdGameObjects.Add(go.name, new List<GameObject>());
+                            string goName = go.name;
+                            if (!createdGameObjects.ContainsKey(goName))
+                                createdGameObjects.Add(goName, new List<GameObject>());
 
-                            createdGameObjects[go.name].Add(go);
+                            createdGameObjects[goName].Add(go);
                         }
                     }
 
                     if (serializableColliders != null)
                     {
+                        string assetPath = ctx.assetPath;
                         for (int ci = 0; ci < serializableColliders.Count; ++ci)
                         {
-                            UpdateProgress(ctx.assetPath, currentProgress++, maxProgress);
+                            UpdateProgress(assetPath, currentProgress++, maxProgress);
 
                             var sc = serializableColliders[ci];
                             GameObject go;
@@ -178,13 +179,14 @@ namespace Unity.HLODSystem
                             root = objects[0];
                         }
 
-                        if (createdColliders.ContainsKey(root.name))
+                        string rootName = root.name;
+                        if (createdColliders.ContainsKey(rootName))
                         {
-                            createdColliders[root.name].transform.SetParent(root.transform, true);
+                            createdColliders[rootName].transform.SetParent(root.transform, true);
                         }
                         
-                        rootData.SetRootObject(root.name, root);
-                        ctx.AddObjectToAsset(root.name, root);
+                        rootData.SetRootObject(rootName, root);
+                        ctx.AddObjectToAsset(rootName, root);
                     }
 
                     ctx.AddObjectToAsset("Root", rootData);

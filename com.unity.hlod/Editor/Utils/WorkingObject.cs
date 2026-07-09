@@ -19,7 +19,10 @@ namespace Unity.HLODSystem.Utils
     public class WorkingObject : IDisposable
     {
         private NativeArray<int> m_detector = new NativeArray<int>(1, Allocator.Persistent);
-        
+
+        private static readonly object lockObject = new object();
+        public static object LockObject => lockObject;
+
         private WorkingMesh? m_mesh;
         private DisposableList<WorkingMaterial> m_materials;
         private Matrix4x4 m_localToWorld;
@@ -28,7 +31,8 @@ namespace Unity.HLODSystem.Utils
 
         private UnityEngine.Rendering.LightProbeUsage m_lightProbeUsage;
 
-        public string? Name { set; get; }
+        private string name = string.Empty;
+        public string Name { get => name; set => name = value; }
         public WorkingMesh? Mesh
         {
             get { return m_mesh; }
@@ -84,6 +88,7 @@ namespace Unity.HLODSystem.Utils
             m_lightProbeUsage = renderer.lightProbeUsage;
         }
 
+        /// <remarks>Background thread</remarks>
         public void SetMesh(WorkingMesh mesh)
         {
             if (m_mesh == mesh)

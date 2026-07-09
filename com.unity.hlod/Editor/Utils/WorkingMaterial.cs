@@ -51,6 +51,8 @@ namespace Unity.HLODSystem.Utils
         {
             m_buffer = WorkingMaterialBufferManager.Instance.Get(allocator, mat);
         }
+
+        /// <remarks>Background thread</remarks>
         public WorkingMaterial(Allocator allocator, int materialId, string name) 
         {
             m_buffer = WorkingMaterialBufferManager.Instance.Create(allocator, materialId, name);
@@ -71,6 +73,7 @@ namespace Unity.HLODSystem.Utils
             return m_buffer.NeedWrite();
         }
 
+        /// <remarks>Background thread</remarks>
         public void AddTexture(string name, WorkingTexture texture)
         {
             m_buffer.AddTexture(name, texture);
@@ -162,6 +165,7 @@ namespace Unity.HLODSystem.Utils
             return buffer;
         }
 
+        /// <remarks>Background thread</remarks>
         public WorkingMaterialBuffer Create(Allocator allocator, int materialId, string name)
         {
             WorkingMaterialBuffer buffer = new WorkingMaterialBuffer(allocator, materialId, name);
@@ -189,6 +193,20 @@ namespace Unity.HLODSystem.Utils
         private DisposableDictionary<string, WorkingTexture> m_textures;
         private Dictionary<string, Color> m_colors;
 
+        private static readonly Dictionary<string, int> shaderProperties
+            = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        private static int ShaderProperty(string name)
+        {
+            if (!shaderProperties.TryGetValue(name, out var value))
+            {
+                value = Shader.PropertyToID(name);
+                shaderProperties[name] = value;
+            }
+
+            return value;
+        }
+
         public string Name
         {
             get => m_name;
@@ -205,22 +223,25 @@ namespace Unity.HLODSystem.Utils
             }
         }
 
-
+        /// <remarks>Background thread</remarks>
         private WorkingMaterialBuffer(Allocator allocator)
         {
             m_allocator = allocator;
             m_instanceID = 0;
             m_textures = new DisposableDictionary<string, WorkingTexture>();
-            m_colors = new Dictionary<string, Color>();
+            m_colors = new Dictionary<string, Color>(StringComparer.Ordinal);
             m_guid = System.Guid.NewGuid().ToString("N");
         }
         public WorkingMaterialBuffer(Allocator allocator, Material mat) : this(allocator)
         {
             m_name = mat.name;
             m_instanceID = mat.GetInstanceID();
+#if OPTIMISATION // Already eallocated in the base contructor
+#else
             m_textures.Dispose();
             m_textures = new DisposableDictionary<string, WorkingTexture>();
             m_colors = new Dictionary<string, Color>();
+#endif // OPTIMISATION
 #if UNITY_6000_3_OR_NEWER
             string path = AssetDatabase.GetAssetPath(mat.GetEntityId());
 #else
@@ -235,7 +256,7 @@ namespace Unity.HLODSystem.Utils
             string[] names = mat.GetTexturePropertyNames();
             for (int i = 0; i < names.Length; ++i)
             {
-                Texture2D? texture = mat.GetTexture(names[i]) as Texture2D;
+                Texture2D? texture = mat.GetTexture(ShaderProperty(names[i])) as Texture2D;
                 if (texture == null)
                     continue;
                     
@@ -252,7 +273,7 @@ namespace Unity.HLODSystem.Utils
                     if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Color)
                     {
                         string name = shader.GetPropertyName(i);
-                        m_colors.Add(name, mat.GetColor(name));
+                        m_colors.Add(name, mat.GetColor(ShaderProperty(name)));
                     }
                 }
 #else
@@ -268,14 +289,19 @@ namespace Unity.HLODSystem.Utils
 #endif // UNITY_6000_3_OR_NEWER
             }
         }
+
+        /// <remarks>Background thread</remarks>
         public WorkingMaterialBuffer(Allocator allocator, int materialId, string name) : this(allocator)
         {
             m_name = name;
             m_instanceID = materialId;
+#if OPTIMISATION // Already eallocated in the base contructor
+#else
             m_guid = System.Guid.NewGuid().ToString("N");
+#endif // OPTIMISATION
         }
 
-        
+
         public void AddRef()
         {
             m_refCount += 1;
@@ -304,8 +330,8 @@ namespace Unity.HLODSystem.Utils
             string path = AssetDatabase.GUIDToAssetPath(m_guid);
             return string.IsNullOrEmpty(path);
         }
-        
-        
+
+        /// <remarks>Background thread</remarks>
         public void AddTexture(string name, WorkingTexture texture)
         {
             lock (m_textures)

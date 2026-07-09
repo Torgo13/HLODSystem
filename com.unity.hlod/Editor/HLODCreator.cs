@@ -21,6 +21,7 @@ namespace Unity.HLODSystem
         private static List<Collider> GetColliders(List<GameObject> gameObjects, float minObjectSize,
             List<Collider> colliders, List<Collider> results)
         {
+            results.Clear();
             for (int i = 0; i < gameObjects.Count; ++i)
             {
                 GameObject obj = gameObjects[i];
@@ -75,12 +76,17 @@ namespace Unity.HLODSystem
 
         private static DisposableList<HLODBuildInfo> CreateBuildInfo(HLOD hlod, SpaceNode root, float minObjectSize,
             Queue<TravelQueueItem> travelQueue, List<TravelQueueItem> candidateItems, List<HLODBuildInfo> buildInfoCandidates,
-            List<MeshRenderer> meshRenderers, List<int> distances, List<Collider> colliders, List<Collider> tempColliders)
+            List<MeshRenderer> meshRenderers, List<int> distances, List<Collider> colliders, List<Collider> tempColliders,
+            DisposableList<HLODBuildInfo> results)
         {
             //List<HLODBuildInfo> resultsCandidates = new List<HLODBuildInfo>();
             
             int maxLevel = 0;
-            
+
+            candidateItems.Clear();
+            buildInfoCandidates.Clear();
+
+            travelQueue.Clear();
             travelQueue.Enqueue(new TravelQueueItem()
             {
                 Node = root,
@@ -155,7 +161,7 @@ namespace Unity.HLODSystem
                 }
             }
             
-            DisposableList<HLODBuildInfo> results = new DisposableList<HLODBuildInfo>();
+            results.Dispose();
             
             for (int i = 0; i < buildInfoCandidates.Count; ++i)
             {
@@ -181,7 +187,8 @@ namespace Unity.HLODSystem
             var colliders = UnityEngine.Pool.ListPool<Collider>.Get();
             var tempColliders = UnityEngine.Pool.ListPool<Collider>.Get();
             var hlodTargets = UnityEngine.Pool.ListPool<GameObject>.Get();
-            
+            var buildInfos = new DisposableList<HLODBuildInfo>();
+
             try
             {
                 Stopwatch sw = new Stopwatch();
@@ -199,7 +206,7 @@ namespace Unity.HLODSystem
                 Bounds bounds = hlod.GetBounds(renderers);
                 UnityEngine.Pool.ListPool<Renderer>.Release(renderers);
 
-                _ = ObjectUtils.HLODTargets(hlod.gameObject, hlodTargets);
+                _ = ObjectUtils.HLODTargets(hlod.transform, hlodTargets);
                 ISpaceSplitter? splitter = SpaceSplitterTypes.CreateInstance(hlod);
                 if (splitter == null)
                 {
@@ -235,19 +242,11 @@ namespace Unity.HLODSystem
                 for ( int ri = 0; ri < rootNodeList.Count; ++ ri)
                 {
                     var rootNode = rootNodeList[ri];
-                    
-                    travelQueue.Clear();
-                    candidateItems.Clear();
-                    buildInfoCandidates.Clear();
-                    meshRenderers.Clear();
-                    distances.Clear();
-                    colliders.Clear();
-                    tempColliders.Clear();
-                    
-                    using (DisposableList<HLODBuildInfo> buildInfos =
-                        CreateBuildInfo(hlod, rootNode, hlod.MinObjectSize,
-                            travelQueue, candidateItems, buildInfoCandidates,
-                            meshRenderers, distances, colliders, tempColliders))
+
+                    _ = CreateBuildInfo(hlod, rootNode, hlod.MinObjectSize,
+                        travelQueue, candidateItems, buildInfoCandidates,
+                        meshRenderers, distances, colliders, tempColliders,
+                        buildInfos);
                     {
                         if (buildInfos.Count == 0 || buildInfos[0].WorkingObjects.Count == 0)
                         {
@@ -335,6 +334,7 @@ namespace Unity.HLODSystem
                 UnityEngine.Pool.ListPool<Collider>.Release(colliders);
                 UnityEngine.Pool.ListPool<Collider>.Release(tempColliders);
                 UnityEngine.Pool.ListPool<GameObject>.Release(hlodTargets);
+                buildInfos.Dispose();
             }
             
         }

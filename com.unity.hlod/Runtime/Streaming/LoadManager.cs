@@ -15,7 +15,10 @@ namespace Unity.HLODSystem.Streaming
             {
                 if (s_instance == null)
                 {
+#if OPTIMISATION_UNITY
+#else
                     GameObject go = new GameObject("LoadManager");
+#endif // OPTIMISATION_UNITY
                     s_instance = new LoadManager();
                 }
 

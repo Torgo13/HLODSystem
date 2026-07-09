@@ -157,6 +157,8 @@ namespace Unity.HLODSystem
             [SerializeField] private int m_height;
             [SerializeField] private byte[] m_bytes;
 
+            public readonly byte[] Bytes => m_bytes;
+
             public string Name
             {
                 set { m_name = value; }

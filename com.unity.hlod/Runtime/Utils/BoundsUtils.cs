@@ -2,6 +2,7 @@
 
 namespace Unity.HLODSystem.Utils
 {
+#if UNITY_EDITOR
     public class BoundsUtils
     {
         public static Bounds CalcLocalBounds(Renderer renderer, Transform transform)
@@ -53,4 +54,5 @@ namespace Unity.HLODSystem.Utils
             return newBounds;
         }
     }
+#endif // UNITY_EDITOR
 }
