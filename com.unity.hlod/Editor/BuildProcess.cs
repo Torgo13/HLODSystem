@@ -16,11 +16,12 @@ namespace Unity.HLODSystem
 
         public void OnProcessScene(Scene scene, BuildReport report)
         {
-            var roots = scene.GetRootGameObjects();
-            using var _0 = UnityEngine.Pool.ListPool<HLODPrefab>.Get(out var prefabs);
+            using var _0 = UnityEngine.Pool.ListPool<GameObject>.Get(out var roots);
+            scene.GetRootGameObjects(roots);
+            using var _1 = UnityEngine.Pool.ListPool<HLODPrefab>.Get(out var prefabs);
 
             //first, if we use HLODPrefab, we have to create prefab instance while build.
-            for (int i = 0; i < roots.Length; ++i)
+            for (int i = 0; i < roots.Count; ++i)
             {
                 prefabs.Clear();
                 roots[i].GetComponentsInChildren<HLODPrefab>(prefabs);
@@ -33,8 +34,8 @@ namespace Unity.HLODSystem
                 }
             }
 
-            using var _1 = UnityEngine.Pool.ListPool<HLODControllerBase>.Get(out var controllers);
-            for (int i = 0; i < roots.Length; ++i)
+            using var _2 = UnityEngine.Pool.ListPool<HLODControllerBase>.Get(out var controllers);
+            for (int i = 0; i < roots.Count; ++i)
             {
                 roots[i].GetComponentsInChildren<HLODControllerBase>(controllers);
             }

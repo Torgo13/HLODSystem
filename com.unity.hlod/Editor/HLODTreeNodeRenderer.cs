@@ -43,9 +43,10 @@ namespace Unity.HLODSystem
             m_allocatedVertices[6] = new Vector3(max.x, max.y, max.z);
             m_allocatedVertices[7] = new Vector3(max.x, max.y, min.z);
 
+            var localToWorldMatrix = node.Controller.transform.localToWorldMatrix;
             for (int i = 0; i < m_allocatedVertices.Length; ++i)
             {
-                m_allocatedVertices[i] = node.Controller.transform.localToWorldMatrix.MultiplyPoint(m_allocatedVertices[i]);
+                m_allocatedVertices[i] = localToWorldMatrix.MultiplyPoint(m_allocatedVertices[i]);
             }
             
             Handles.color = color;

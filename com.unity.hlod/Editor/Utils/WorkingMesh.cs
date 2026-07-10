@@ -33,6 +33,12 @@ namespace Unity.HLODSystem.Utils
             var uv2 = UnityEngine.Pool.ListPool<Vector2>.Get();
             var uv3 = UnityEngine.Pool.ListPool<Vector2>.Get();
             var uv4 = UnityEngine.Pool.ListPool<Vector2>.Get();
+#if UNITY_8UV_SUPPORT
+            var uv5 = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv6 = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv7 = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv8 = UnityEngine.Pool.ListPool<Vector2>.Get();
+#endif // UNITY_8UV_SUPPORT
             var colors = UnityEngine.Pool.ListPool<Color>.Get();
             var boneWeights = UnityEngine.Pool.ListPool<BoneWeight>.Get();
             mesh.GetVertices(vertices);
@@ -42,9 +48,19 @@ namespace Unity.HLODSystem.Utils
             mesh.GetUVs(1, uv2);
             mesh.GetUVs(2, uv3);
             mesh.GetUVs(3, uv4);
+#if UNITY_8UV_SUPPORT
+            mesh.GetUVs(4, uv5);
+            mesh.GetUVs(5, uv6);
+            mesh.GetUVs(6, uv7);
+            mesh.GetUVs(7, uv8);
+#endif // UNITY_8UV_SUPPORT
             mesh.GetColors(colors);
             mesh.GetBoneWeights(boneWeights);
-            wm.CopyFrom(vertices, normals, tangents, uv, uv2, uv3, uv4, colors, bindposes, boneWeights);
+            wm.CopyFrom(vertices, normals, tangents, uv, uv2, uv3, uv4,
+#if UNITY_8UV_SUPPORT
+                uv5, uv6, uv7, uv8,
+#endif // UNITY_8UV_SUPPORT
+                colors, bindposes, boneWeights);
             UnityEngine.Pool.ListPool<Vector3>.Release(vertices);
             UnityEngine.Pool.ListPool<Vector3>.Release(normals);
             UnityEngine.Pool.ListPool<Vector4>.Release(tangents);
@@ -52,6 +68,12 @@ namespace Unity.HLODSystem.Utils
             UnityEngine.Pool.ListPool<Vector2>.Release(uv2);
             UnityEngine.Pool.ListPool<Vector2>.Release(uv3);
             UnityEngine.Pool.ListPool<Vector2>.Release(uv4);
+#if UNITY_8UV_SUPPORT
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv5);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv6);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv7);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv8);
+#endif // UNITY_8UV_SUPPORT
             UnityEngine.Pool.ListPool<Color>.Release(colors);
             UnityEngine.Pool.ListPool<BoneWeight>.Release(boneWeights);
 #else
@@ -62,6 +84,12 @@ namespace Unity.HLODSystem.Utils
             wm.uv2 = mesh.uv2;
             wm.uv3 = mesh.uv3;
             wm.uv4 = mesh.uv4;
+#if UNITY_8UV_SUPPORT
+            wm.uv5 = mesh.uv5;
+            wm.uv6 = mesh.uv6;
+            wm.uv7 = mesh.uv7;
+            wm.uv8 = mesh.uv8;
+#endif // UNITY_8UV_SUPPORT
             wm.colors = mesh.colors;
             wm.boneWeights = mesh.boneWeights;
 #endif // OPTIMISATION
@@ -91,6 +119,12 @@ namespace Unity.HLODSystem.Utils
             UV2,
             UV3,
             UV4,
+#if UNITY_8UV_SUPPORT
+            UV5,
+            UV6,
+            UV7,
+            UV8,
+#endif // UNITY_8UV_SUPPORT
             Colors,
             BoneWeights,
             Bindposes,
@@ -164,6 +198,57 @@ namespace Unity.HLODSystem.Utils
                 m_UV4.GetSubArray(0, uv4Count).CopyFrom(value);
             }
         }
+#if UNITY_8UV_SUPPORT
+        public NativeArray<Vector2> UV5
+        {
+            get => m_UV5.GetSubArray(0, uvCount);
+            set
+            {
+                uv5Count = value.Length;
+                m_UV5.GetSubArray(0, uv5Count).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector2> UV6
+        {
+            get => m_UV6.GetSubArray(0, uv6Count);
+            set
+            {
+                uv6Count = value.Length;
+                m_UV6.GetSubArray(0, uv6Count).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector2> UV7
+        {
+            get => m_UV7.GetSubArray(0, uv7Count);
+            set
+            {
+                uv7Count = value.Length;
+                m_UV7.GetSubArray(0, uv7Count).CopyFrom(value);
+            }
+        }
+        public NativeArray<Vector2> UV8
+        {
+            get => m_UV8.GetSubArray(0, uv8Count);
+            set
+            {
+                uv8Count = value.Length;
+                m_UV8.GetSubArray(0, uv8Count).CopyFrom(value);
+            }
+        }
+#endif // UNITY_8UV_SUPPORT
+        public NativeArray<Vector2> this[int index] => index switch
+        {
+            1 => UV2,
+            2 => UV3,
+            3 => UV4,
+#if UNITY_8UV_SUPPORT
+            4 => UV5,
+            5 => UV6,
+            6 => UV7,
+            7 => UV8,
+#endif // UNITY_8UV_SUPPORT
+            _ => UV,
+        };
         public NativeArray<Color> Colors
         {
             get => m_Colors.GetSubArray(0, colorsCount);
@@ -191,6 +276,121 @@ namespace Unity.HLODSystem.Utils
                 m_Bindposes.GetSubArray(0, bindposesCount).CopyFrom(value);
             }
         }
+        public void SetVertices(System.Collections.Generic.List<Vector3> value)
+        {
+            vertexCount = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_Vertices[i] = value[i];
+            }
+        }
+        public void SetNormals(System.Collections.Generic.List<Vector3> value)
+        {
+            normalsCount = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_Normals[i] = value[i];
+            }
+        }
+        public void SetTangents(System.Collections.Generic.List<Vector4> value)
+        {
+            tangentsCount = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_Tangents[i] = value[i];
+            }
+        }
+        public void SetUV(System.Collections.Generic.List<Vector2> value)
+        {
+            uvCount = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV[i] = value[i];
+            }
+        }
+        public void SetUV2(System.Collections.Generic.List<Vector2> value)
+        {
+            uv2Count = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV2[i] = value[i];
+            }
+        }
+        public void SetUV3(System.Collections.Generic.List<Vector2> value)
+        {
+            uv3Count = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV3[i] = value[i];
+            }
+        }
+        public void SetUV4(System.Collections.Generic.List<Vector2> value)
+        {
+            uv4Count = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV4[i] = value[i];
+            }
+        }
+#if UNITY_8UV_SUPPORT
+        public void SetUV5(System.Collections.Generic.List<Vector2> value)
+        {
+            uv5Count = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV5[i] = value[i];
+            }
+        }
+        public void SetUV6(System.Collections.Generic.List<Vector2> value)
+        {
+            uv6Count = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV6[i] = value[i];
+            }
+        }
+        public void SetUV7(System.Collections.Generic.List<Vector2> value)
+        {
+            uv7Count = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV7[i] = value[i];
+            }
+        }
+        public void SetUV8(System.Collections.Generic.List<Vector2> value)
+        {
+            uv8Count = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_UV8[i] = value[i];
+            }
+        }
+#endif // UNITY_8UV_SUPPORT
+        public void SetColors(System.Collections.Generic.List<Color> value)
+        {
+            colorsCount = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_Colors[i] = value[i];
+            }
+        }
+        public void SetBoneWeights(System.Collections.Generic.List<BoneWeight> value)
+        {
+            boneWeightsCount = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_BoneWeights[i] = value[i];
+            }
+        }
+        public void SetBindposes(System.Collections.Generic.List<Matrix4x4> value)
+        {
+            bindposesCount = value.Count;
+            for (int i = 0; i < value.Count; i++)
+            {
+                m_Bindposes[i] = value[i];
+            }
+        }
+
         public int TrianglesCount => trianglesCount;
 #if UNUSED
         public NativeArray<int> Triangles
@@ -242,6 +442,12 @@ namespace Unity.HLODSystem.Utils
             System.Collections.Generic.List<Vector2>? uv2 = null,
             System.Collections.Generic.List<Vector2>? uv3 = null,
             System.Collections.Generic.List<Vector2>? uv4 = null,
+#if UNITY_8UV_SUPPORT
+            System.Collections.Generic.List<Vector2>? uv5 = null,
+            System.Collections.Generic.List<Vector2>? uv6 = null,
+            System.Collections.Generic.List<Vector2>? uv7 = null,
+            System.Collections.Generic.List<Vector2>? uv8 = null,
+#endif // UNITY_8UV_SUPPORT
             System.Collections.Generic.List<Color>? colors = null,
             System.Collections.Generic.List<Matrix4x4>? bindposes = null,
             System.Collections.Generic.List<BoneWeight>? boneWeights = null)
@@ -303,6 +509,44 @@ namespace Unity.HLODSystem.Utils
                 }
             }
 
+#if UNITY_8UV_SUPPORT
+            if (uv5 != null)
+            {
+                uv5Count = uv5.Count;
+                for (int i = 0; i < uv5Count; i++)
+                {
+                    m_UV5[i] = uv5[i];
+                }
+            }
+
+            if (uv6 != null)
+            {
+                uv6Count = uv6.Count;
+                for (int i = 0; i < uv6Count; i++)
+                {
+                    m_UV6[i] = uv6[i];
+                }
+            }
+
+            if (uv7 != null)
+            {
+                uv7Count = uv7.Count;
+                for (int i = 0; i < uv7Count; i++)
+                {
+                    m_UV7[i] = uv7[i];
+                }
+            }
+
+            if (uv8 != null)
+            {
+                uv8Count = uv8.Count;
+                for (int i = 0; i < uv8Count; i++)
+                {
+                    m_UV8[i] = uv8[i];
+                }
+            }
+#endif // UNITY_8UV_SUPPORT
+
             if (colors != null)
             {
                 colorsCount = colors.Count;
@@ -330,6 +574,20 @@ namespace Unity.HLODSystem.Utils
                 }
             }
         }
+
+        public int NormalsCount => normalsCount;
+        public int TangentsCount => tangentsCount;
+        public int UVCount => uvCount;
+        public int UV2Count => uv2Count;
+        public int UV3Count => uv3Count;
+        public int UV4Count => uv4Count;
+#if UNITY_8UV_SUPPORT
+        public int UV5Count => uv5Count;
+        public int UV6Count => uv6Count;
+        public int UV7Count => uv7Count;
+        public int UV8Count => uv8Count;
+#endif // UNITY_8UV_SUPPORT
+        public int ColorsCount => colorsCount;
 #endif // OPTIMISATION
         
         public Vector3[] vertices
@@ -513,6 +771,104 @@ namespace Unity.HLODSystem.Utils
             get { return m_Counts[(int)Channel.UV4]; }
             set { m_Counts[(int)Channel.UV4] = value; }
         }
+
+#if UNITY_8UV_SUPPORT
+        public Vector2[] uv5
+        {
+            get { return m_UV5.Slice(0, uv5Count).ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv5Count = 0;
+                }
+                else
+                {
+                    uv5Count = value.Length;
+                    m_UV5.Slice(0, uv5Count).CopyFrom(value);
+                }
+            }
+        }
+        NativeArray<Vector2> m_UV5;
+
+        int uv5Count
+        {
+            get { return m_Counts[(int)Channel.UV5]; }
+            set { m_Counts[(int)Channel.UV5] = value; }
+        }
+
+        public Vector2[] uv6
+        {
+            get { return m_UV6.Slice(0, uv6Count).ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv6Count = 0;
+                }
+                else
+                {
+                    uv6Count = value.Length;
+                    m_UV6.Slice(0, uv6Count).CopyFrom(value);
+                }
+            }
+        }
+        NativeArray<Vector2> m_UV6;
+
+        int uv6Count
+        {
+            get { return m_Counts[(int)Channel.UV6]; }
+            set { m_Counts[(int)Channel.UV6] = value; }
+        }
+
+        public Vector2[] uv7
+        {
+            get { return m_UV7.Slice(0, uv7Count).ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv7Count = 0;
+                }
+                else
+                {
+                    uv7Count = value.Length;
+                    m_UV7.Slice(0, uv7Count).CopyFrom(value);
+                }
+            }
+        }
+        NativeArray<Vector2> m_UV7;
+
+        int uv7Count
+        {
+            get { return m_Counts[(int)Channel.UV7]; }
+            set { m_Counts[(int)Channel.UV7] = value; }
+        }
+
+        public Vector2[] uv8
+        {
+            get { return m_UV8.Slice(0, uv8Count).ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv8Count = 0;
+                }
+                else
+                {
+                    uv8Count = value.Length;
+                    m_UV8.Slice(0, uv8Count).CopyFrom(value);
+                }
+            }
+        }
+        NativeArray<Vector2> m_UV8;
+
+        int uv8Count
+        {
+            get { return m_Counts[(int)Channel.UV8]; }
+            set { m_Counts[(int)Channel.UV8] = value; }
+        }
+#endif // UNITY_8UV_SUPPORT
 
         public Color[] colors
         {
@@ -795,6 +1151,12 @@ namespace Unity.HLODSystem.Utils
             m_UV2 = new NativeArray<Vector2>(maxVertices, allocator);
             m_UV3 = new NativeArray<Vector2>(maxVertices, allocator);
             m_UV4 = new NativeArray<Vector2>(maxVertices, allocator);
+#if UNITY_8UV_SUPPORT
+            m_UV5 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV6 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV7 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV8 = new NativeArray<Vector2>(maxVertices, allocator);
+#endif // UNITY_8UV_SUPPORT
             m_Colors = new NativeArray<Color>(maxVertices, allocator);
             m_BoneWeights = new NativeArray<BoneWeight>(maxVertices, allocator);
             m_Bindposes = new NativeArray<Matrix4x4>(maxBindposes, allocator);
@@ -809,6 +1171,9 @@ namespace Unity.HLODSystem.Utils
         public WorkingMesh(Allocator allocator,
             ReadOnlySpan<Vector3> vertices, ReadOnlySpan<Vector3> normals, ReadOnlySpan<Vector4> tangents,
             ReadOnlySpan<Vector2> uvs, ReadOnlySpan<Vector2> uv2, ReadOnlySpan<Vector2> uv3, ReadOnlySpan<Vector2> uv4,
+#if UNITY_8UV_SUPPORT
+            ReadOnlySpan<Vector2> uv5, ReadOnlySpan<Vector2> uv6, ReadOnlySpan<Vector2> uv7, ReadOnlySpan<Vector2> uv8,
+#endif // UNITY_8UV_SUPPORT
             ReadOnlySpan<Color> colors, int maxTriangles, int maxSubmeshes, int maxBindposes)
         {
             int maxVertices = vertices.Length;
@@ -820,6 +1185,12 @@ namespace Unity.HLODSystem.Utils
             m_UV2 = new NativeArray<Vector2>(maxVertices, allocator);
             m_UV3 = new NativeArray<Vector2>(maxVertices, allocator);
             m_UV4 = new NativeArray<Vector2>(maxVertices, allocator);
+#if UNITY_8UV_SUPPORT
+            m_UV5 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV6 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV7 = new NativeArray<Vector2>(maxVertices, allocator);
+            m_UV8 = new NativeArray<Vector2>(maxVertices, allocator);
+#endif // UNITY_8UV_SUPPORT
             m_Colors = new NativeArray<Color>(maxVertices, allocator);
             m_BoneWeights = new NativeArray<BoneWeight>(maxVertices, allocator);
             m_Bindposes = new NativeArray<Matrix4x4>(maxBindposes, allocator);
@@ -834,6 +1205,12 @@ namespace Unity.HLODSystem.Utils
             uv2.CopyTo(m_UV2);
             uv3.CopyTo(m_UV3);
             uv4.CopyTo(m_UV4);
+#if UNITY_8UV_SUPPORT
+            uv5.CopyTo(m_UV5);
+            uv6.CopyTo(m_UV6);
+            uv7.CopyTo(m_UV7);
+            uv8.CopyTo(m_UV8);
+#endif // UNITY_8UV_SUPPORT
             colors.CopyTo(m_Colors);
 
             vertexCount = vertices.Length;
@@ -843,6 +1220,12 @@ namespace Unity.HLODSystem.Utils
             uv2Count = uv2.Length;
             uv3Count = uv3.Length;
             uv4Count = uv4.Length;
+#if UNITY_8UV_SUPPORT
+            uv5Count = uv5.Length;
+            uv6Count = uv6.Length;
+            uv7Count = uv7.Length;
+            uv8Count = uv8.Length;
+#endif // UNITY_8UV_SUPPORT
             colorsCount = colors.Length;
         }
 #endif // OPTIMISATION
@@ -873,6 +1256,20 @@ namespace Unity.HLODSystem.Utils
 
             if (m_UV4.IsCreated)
                 m_UV4.Dispose();
+
+#if UNITY_8UV_SUPPORT
+            if (m_UV5.IsCreated)
+                m_UV5.Dispose();
+
+            if (m_UV6.IsCreated)
+                m_UV6.Dispose();
+
+            if (m_UV7.IsCreated)
+                m_UV7.Dispose();
+
+            if (m_UV8.IsCreated)
+                m_UV8.Dispose();
+#endif // UNITY_8UV_SUPPORT
 
             if (m_Colors.IsCreated)
                 m_Colors.Dispose();
@@ -916,6 +1313,12 @@ namespace Unity.HLODSystem.Utils
             mesh.SetUVs(1, m_UV2.GetSubArray(0, uv2Count));
             mesh.SetUVs(2, m_UV3.GetSubArray(0, uv3Count));
             mesh.SetUVs(3, m_UV4.GetSubArray(0, uv4Count));
+#if UNITY_8UV_SUPPORT
+            mesh.SetUVs(4, m_UV5.GetSubArray(0, uv5Count));
+            mesh.SetUVs(5, m_UV6.GetSubArray(0, uv6Count));
+            mesh.SetUVs(6, m_UV7.GetSubArray(0, uv7Count));
+            mesh.SetUVs(7, m_UV8.GetSubArray(0, uv8Count));
+#endif // UNITY_8UV_SUPPORT
             mesh.SetColors(m_Colors.GetSubArray(0, colorsCount));
             mesh.boneWeights = boneWeights;
             if (bindposesCount != 0)
@@ -928,6 +1331,12 @@ namespace Unity.HLODSystem.Utils
             mesh.uv2 = uv2;
             mesh.uv3 = uv3;
             mesh.uv4 = uv4;
+#if UNITY_8UV_SUPPORT
+            mesh.uv5 = uv5;
+            mesh.uv6 = uv6;
+            mesh.uv7 = uv7;
+            mesh.uv8 = uv8;
+#endif // UNITY_8UV_SUPPORT
             mesh.colors = colors;
             mesh.boneWeights = boneWeights;
             mesh.bindposes = bindposes;

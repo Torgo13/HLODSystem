@@ -105,9 +105,6 @@ namespace Unity.HLODSystem.Streaming
             compressionData.AndroidTextureFormat = options.AndroidCompression;
             compressionData.iOSTextureFormat = options.iOSCompression;
             compressionData.tvOSTextureFormat = options.tvOSCompression;
-
-
-            string filenamePrefix = $"{path}{root.name}";
             
             if (Directory.Exists(path) == false)
             {
@@ -118,27 +115,25 @@ namespace Unity.HLODSystem.Streaming
 
             for (int i = 0; i < infos.Count; ++i)
             {
-                if (hlodDatas.ContainsKey(infos[i].ParentIndex) == false)
+                if (!hlodDatas.TryGetValue(infos[i].ParentIndex, out HLODData data))
                 {
-                    HLODData newData = new HLODData();
-                    newData.CompressionData = compressionData;
-                    hlodDatas.Add(infos[i].ParentIndex, newData);
+                    data = new HLODData();
+                    data.CompressionData = compressionData;
+                    hlodDatas.Add(infos[i].ParentIndex, data);
                 }
 
-                HLODData data = hlodDatas[infos[i].ParentIndex];
                 data.AddFromWokringObjects(infos[i].Name, infos[i].WorkingObjects);
                 data.AddFromWorkingColliders(infos[i].Name, infos[i].Colliders);
 
                 if (writeNoPrefab)
                 {
-                    if (hlodDatas.ContainsKey(i) == false)
+                    if (!hlodDatas.TryGetValue(i, out HLODData prefabData))
                     {
-                        HLODData newData = new HLODData();
-                        newData.CompressionData = compressionData;
-                        hlodDatas.Add(i, newData);
+                        prefabData = new HLODData();
+                        prefabData.CompressionData = compressionData;
+                        hlodDatas.Add(i, prefabData);
                     }
 
-                    HLODData prefabData = hlodDatas[i];
                     var spaceNode = infos[i].Target;
 
                     for (int oi = 0; oi < spaceNode.Objects.Count; ++oi)
@@ -158,14 +153,14 @@ namespace Unity.HLODSystem.Streaming
 
             if (extractMaterial)
             {
-                ExtractMaterial(hlodDatas, filenamePrefix);
+                ExtractMaterial(hlodDatas, path, root.name);
                 
             }
 
             Dictionary<int, RootData> rootDatas = new Dictionary<int, RootData>();
             foreach (var item in hlodDatas)
             {
-                string filename = $"{filenamePrefix}_group{item.Key}.hlod";
+                string filename = $"{path}{root.name}_group{item.Key}.hlod";
                 using (Stream stream = new FileStream(filename, FileMode.Create))
                 {
                     HLODDataSerializer.Write(stream, item.Value);
@@ -248,7 +243,7 @@ namespace Unity.HLODSystem.Streaming
                 {
                     if (rootDatas[infos[i].ParentIndex].GetRootObject(infos[i].Name) != null)
                     {
-                        string filename = $"{filenamePrefix}_group{infos[i].ParentIndex}.hlod[{infos[i].Name}]";
+                        string filename = $"{path}{root.name}_group{infos[i].ParentIndex}.hlod[{infos[i].Name}]";
                         int lowId = addressableController.AddLowObject(filename);
                         hlodTreeNode.LowObjectIds.Add(lowId);    
                     }
@@ -273,7 +268,7 @@ namespace Unity.HLODSystem.Streaming
             addressableController.UpdateMaxManualLevel();
         }
 
-        private void ExtractMaterial(Dictionary<int, HLODData> hlodDatas, string filenamePrefix)
+        private void ExtractMaterial(Dictionary<int, HLODData> hlodDatas, string path, string filenamePrefix)
         {
             Dictionary<string, HLODData.SerializableMaterial> hlodAllMaterials = new Dictionary<string, HLODData.SerializableMaterial>();
             //collect all materials
@@ -296,17 +291,18 @@ namespace Unity.HLODSystem.Streaming
 
                 hlodMaterial.Value.GetTextureCount();
                 Material mat = hlodMaterial.Value.To();
-
+                string matFilename = mat.name;
                 for (int ti = 0; ti < hlodMaterial.Value.GetTextureCount(); ++ti)
                 {
                     var serializeTexture = hlodMaterial.Value.GetTexture(ti);
 #if OPTIMISATION
-                    byte[] bytes = serializeTexture.Bytes;
+                    byte[] bytes = ImageConversion.EncodeArrayToPNG(serializeTexture.Bytes,
+                        serializeTexture.GraphicsFormat, (uint)serializeTexture.Width, (uint)serializeTexture.Height);
 #else
                     Texture2D texture = serializeTexture.To();
                     byte[] bytes = texture.EncodeToPNG();
 #endif // OPTIMISATION
-                    string textureFilename = $"{filenamePrefix}_{mat.name}_{serializeTexture.TextureName}.png";
+                    string textureFilename = $"{path}{filenamePrefix}_{matFilename}_{serializeTexture.TextureName}.png";
                     File.WriteAllBytes(textureFilename, bytes);
 
                     AssetDatabase.ImportAsset(textureFilename);
@@ -326,7 +322,7 @@ namespace Unity.HLODSystem.Streaming
                     mat.SetTexture(serializeTexture.Name, storedTexture);
                 }
 
-                string matFilename = $"{filenamePrefix}_{mat.name}.mat";
+                matFilename = $"{path}{filenamePrefix}_{matFilename}.mat";
                 AssetDatabase.CreateAsset(mat, matFilename);
                 AssetDatabase.ImportAsset(matFilename);
 
@@ -345,9 +341,9 @@ namespace Unity.HLODSystem.Streaming
             }
 
             //apply to HLODData
-            foreach(var hlodData in hlodDatas.Values)
+            foreach(var hlodDataKVPairs in hlodDatas)
             {
-                
+                var hlodData = hlodDataKVPairs.Value;
                 var materials = hlodData.GetMaterials();
                 for ( int i = 0; i < materials.Count; ++i )
                 {

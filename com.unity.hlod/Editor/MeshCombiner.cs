@@ -26,11 +26,21 @@ namespace Unity.HLODSystem
             var uv2s = UnityEngine.Pool.ListPool<Vector2>.Get();
             var uv3s = UnityEngine.Pool.ListPool<Vector2>.Get();
             var uv4s = UnityEngine.Pool.ListPool<Vector2>.Get();
+#if UNITY_8UV_SUPPORT
+            var uv5s = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv6s = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv7s = UnityEngine.Pool.ListPool<Vector2>.Get();
+            var uv8s = UnityEngine.Pool.ListPool<Vector2>.Get();
+#endif // UNITY_8UV_SUPPORT
             var colors = UnityEngine.Pool.ListPool<Color>.Get();
             var triangles = UnityEngine.Pool.ListPool<int>.Get();
 
             var mesh = CombineMesh(allocator, infos, remappers, vertices, normals, tangents,
-                uv1s, uv2s, uv3s, uv4s, colors, triangles);
+                uv1s, uv2s, uv3s, uv4s,
+#if UNITY_8UV_SUPPORT
+                uv5s, uv6s, uv7s, uv8s,
+#endif // UNITY_8UV_SUPPORT
+                colors, triangles);
                 
             UnityEngine.Pool.ListPool<Dictionary<int, int>>.Release(remappers);
             UnityEngine.Pool.ListPool<Vector3>.Release(vertices);
@@ -40,6 +50,12 @@ namespace Unity.HLODSystem
             UnityEngine.Pool.ListPool<Vector2>.Release(uv2s);
             UnityEngine.Pool.ListPool<Vector2>.Release(uv3s);
             UnityEngine.Pool.ListPool<Vector2>.Release(uv4s);
+#if UNITY_8UV_SUPPORT
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv5s);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv6s);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv7s);
+            UnityEngine.Pool.ListPool<Vector2>.Release(uv8s);
+#endif // UNITY_8UV_SUPPORT
             UnityEngine.Pool.ListPool<Color>.Release(colors);
             UnityEngine.Pool.ListPool<int>.Release(triangles);
 
@@ -49,6 +65,9 @@ namespace Unity.HLODSystem
         public WorkingMesh CombineMesh(Allocator allocator, List<CombineInfo> infos,
             List<Dictionary<int, int>> remappers, List<Vector3> vertices, List<Vector3> normals, List<Vector4> tangents,
             List<Vector2> uv1s, List<Vector2> uv2s, List<Vector2> uv3s, List<Vector2> uv4s,
+#if UNITY_8UV_SUPPORT
+            List<Vector2> uv5s, List<Vector2> uv6s, List<Vector2> uv7s, List<Vector2> uv8s,
+#endif // UNITY_8UV_SUPPORT
             List<Color> colors, List<int> triangles)
         {
             remappers.Clear();
@@ -59,6 +78,12 @@ namespace Unity.HLODSystem
             uv2s.Clear();
             uv3s.Clear();
             uv4s.Clear();
+#if UNITY_8UV_SUPPORT
+            uv5s.Clear();
+            uv6s.Clear();
+            uv7s.Clear();
+            uv8s.Clear();
+#endif // UNITY_8UV_SUPPORT
             colors.Clear();
             triangles.Clear();
             
@@ -70,6 +95,12 @@ namespace Unity.HLODSystem
             int UV2Count = 0;
             int UV3Count = 0;
             int UV4Count = 0;
+#if UNITY_8UV_SUPPORT
+            int UV5Count = 0;
+            int UV6Count = 0;
+            int UV7Count = 0;
+            int UV8Count = 0;
+#endif // UNITY_8UV_SUPPORT
             int colorCount = 0;
 
             int trianglesCount = 0;
@@ -82,14 +113,20 @@ namespace Unity.HLODSystem
                 var meshIndices = infos[i].Mesh.GetTrianglesNative(infos[i].MeshIndex);
                 Dictionary<int, int> remapper = CalculateMeshRemap(meshIndices);
 
-                verticesCount += (infos[i].Mesh.vertices.Length > 0) ? remapper.Count : 0;
-                normalCount += (infos[i].Mesh.normals.Length > 0) ? remapper.Count : 0;
-                tangentCount += (infos[i].Mesh.tangents.Length > 0) ? remapper.Count : 0;
-                UV1Count += (infos[i].Mesh.uv.Length > 0) ? remapper.Count : 0;
-                UV2Count += (infos[i].Mesh.uv2.Length > 0) ? remapper.Count : 0;
-                UV3Count += (infos[i].Mesh.uv3.Length > 0) ? remapper.Count : 0;
-                UV4Count += (infos[i].Mesh.uv4.Length > 0) ? remapper.Count : 0;
-                colorCount += (infos[i].Mesh.colors.Length > 0) ? remapper.Count : 0;
+                verticesCount += (infos[i].Mesh.vertexCount > 0) ? remapper.Count : 0;
+                normalCount += (infos[i].Mesh.NormalsCount > 0) ? remapper.Count : 0;
+                tangentCount += (infos[i].Mesh.TangentsCount > 0) ? remapper.Count : 0;
+                UV1Count += (infos[i].Mesh.UVCount > 0) ? remapper.Count : 0;
+                UV2Count += (infos[i].Mesh.UV2Count > 0) ? remapper.Count : 0;
+                UV3Count += (infos[i].Mesh.UV3Count > 0) ? remapper.Count : 0;
+                UV4Count += (infos[i].Mesh.UV4Count > 0) ? remapper.Count : 0;
+#if UNITY_8UV_SUPPORT
+                UV5Count += (infos[i].Mesh.UV5Count > 0) ? remapper.Count : 0;
+                UV6Count += (infos[i].Mesh.UV6Count > 0) ? remapper.Count : 0;
+                UV7Count += (infos[i].Mesh.UV7Count > 0) ? remapper.Count : 0;
+                UV8Count += (infos[i].Mesh.UV8Count > 0) ? remapper.Count : 0;
+#endif // UNITY_8UV_SUPPORT
+                colorCount += (infos[i].Mesh.ColorsCount > 0) ? remapper.Count : 0;
 
                 trianglesCount += meshIndices.Length;
                 
@@ -142,24 +179,40 @@ namespace Unity.HLODSystem
                     FillBuffer(ref uv3s, mesh.uv3, remapper, Vector2.zero);
                 if ( UV4Count > 0 )
                     FillBuffer(ref uv4s, mesh.uv4, remapper, Vector2.zero);
+#if UNITY_8UV_SUPPORT
+                if (UV5Count > 0)
+                    FillBuffer(ref uv5s, mesh.uv5, remapper, Vector2.zero);
+                if (UV6Count > 0)
+                    FillBuffer(ref uv6s, mesh.uv6, remapper, Vector2.zero);
+                if (UV7Count > 0)
+                    FillBuffer(ref uv7s, mesh.uv7, remapper, Vector2.zero);
+                if (UV8Count > 0)
+                    FillBuffer(ref uv8s, mesh.uv8, remapper, Vector2.zero);
+#endif // UNITY_8UV_SUPPORT
                 if ( colorCount > 0 )
                     FillBuffer(ref colors, mesh.colors, remapper, Color.white);
 
-                FillIndices(ref triangles, mesh.GetTriangles(infos[i].MeshIndex), remapper, startIndex);
+                FillIndices(ref triangles, mesh.GetTrianglesNative(infos[i].MeshIndex), remapper, startIndex);
 
             }
 
             combinedMesh.name = "CombinedMesh";
-            combinedMesh.vertices = vertices.ToArray();
-            combinedMesh.normals = normals.ToArray();
-            combinedMesh.tangents = tangents.ToArray();
-            combinedMesh.uv = uv1s.ToArray();
-            combinedMesh.uv2 = uv2s.ToArray();
-            combinedMesh.uv3 = uv3s.ToArray();
-            combinedMesh.uv4 = uv4s.ToArray();
-            combinedMesh.colors = colors.ToArray();
+            combinedMesh.SetVertices(vertices);
+            combinedMesh.SetVertices(normals);
+            combinedMesh.SetTangents(tangents);
+            combinedMesh.SetUV(uv1s);
+            combinedMesh.SetUV2(uv2s);
+            combinedMesh.SetUV3(uv3s);
+            combinedMesh.SetUV4(uv4s);
+#if UNITY_8UV_SUPPORT
+            combinedMesh.SetUV5(uv5s);
+            combinedMesh.SetUV6(uv6s);
+            combinedMesh.SetUV7(uv7s);
+            combinedMesh.SetUV8(uv8s);
+#endif // UNITY_8UV_SUPPORT
+            combinedMesh.SetColors(colors);
             
-            combinedMesh.SetTriangles(triangles.ToArray(), 0);
+            combinedMesh.SetTriangles(triangles, 0);
 
             return combinedMesh;
         }
@@ -167,7 +220,10 @@ namespace Unity.HLODSystem
         private void FillBuffer<T>(ref List<T> buffer, T[]? source, Dictionary<int,int> remapper, T defaultValue)
         { 
             int startIndex = buffer.Count;
-            buffer.AddRange(Enumerable.Repeat(defaultValue, remapper.Count));
+            for (int i = 0, remapperCount = remapper.Count; i < remapperCount; i++)
+            {
+                buffer.Add(defaultValue);
+            }
             
             if (source == null || source.Length == 0)
             {
@@ -181,7 +237,7 @@ namespace Unity.HLODSystem
             }
         }
 
-        private void FillIndices(ref List<int> buffer, int[] source, Dictionary<int,int> remapper, int startIndex )
+        private void FillIndices(ref List<int> buffer, System.ReadOnlySpan<int> source, Dictionary<int,int> remapper, int startIndex )
         {
             for (int i = 0; i < source.Length; ++i)
             {

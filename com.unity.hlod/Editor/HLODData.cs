@@ -34,6 +34,12 @@ namespace Unity.HLODSystem
             [SerializeField] private byte[] m_uvs2;
             [SerializeField] private byte[] m_uvs3;
             [SerializeField] private byte[] m_uvs4;
+#if UNITY_8UV_SUPPORT
+            [SerializeField] private byte[] m_uvs5;
+            [SerializeField] private byte[] m_uvs6;
+            [SerializeField] private byte[] m_uvs7;
+            [SerializeField] private byte[] m_uvs8;
+#endif // UNITY_8UV_SUPPORT
             [SerializeField] private byte[] m_colors;
             [SerializeField] private List<int[]> m_indices;
 
@@ -90,6 +96,12 @@ namespace Unity.HLODSystem
                 m_uvs2 = ArrayToBytes(mesh.uv2);
                 m_uvs3 = ArrayToBytes(mesh.uv3);
                 m_uvs4 = ArrayToBytes(mesh.uv4);
+#if UNITY_8UV_SUPPORT
+                m_uvs5 = ArrayToBytes(mesh.uv5);
+                m_uvs6 = ArrayToBytes(mesh.uv6);
+                m_uvs7 = ArrayToBytes(mesh.uv7);
+                m_uvs8 = ArrayToBytes(mesh.uv8);
+#endif // UNITY_8UV_SUPPORT
                 m_colors = ArrayToBytes(mesh.colors);
                 if (m_indices == null)
                     m_indices = new List<int[]>();
@@ -115,6 +127,12 @@ namespace Unity.HLODSystem
                 mesh.uv2 = BytesToArray<Vector2>(m_uvs2);
                 mesh.uv3 = BytesToArray<Vector2>(m_uvs3);
                 mesh.uv4 = BytesToArray<Vector2>(m_uvs4);
+#if UNITY_8UV_SUPPORT
+                mesh.uv5 = BytesToArray<Vector2>(m_uvs5);
+                mesh.uv6 = BytesToArray<Vector2>(m_uvs6);
+                mesh.uv7 = BytesToArray<Vector2>(m_uvs7);
+                mesh.uv8 = BytesToArray<Vector2>(m_uvs8);
+#endif // UNITY_8UV_SUPPORT
                 mesh.colors = BytesToArray<Color>(m_colors);
 
                 mesh.subMeshCount = m_indices.Count;

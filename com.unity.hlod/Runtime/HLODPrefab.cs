@@ -45,13 +45,12 @@ namespace Unity.HLODSystem
         void Start()
         {
 #if OPTIMISATION_UNITY
+            Transform? instantiatePrefab = m_instantiatePrefab != null ? m_instantiatePrefab.transform : null;
             using var _0 = UnityEngine.Pool.ListPool<GameObject>.Get(out var childList);
-            var t = transform;
-            for (int i = 0, childCount = t.childCount; i < childCount; i++)
+            foreach (Transform child in transform)
             {
-                var go = t.GetChild(i).gameObject;
-                if (go != m_instantiatePrefab)
-                    childList.Add(go);
+                if (child != instantiatePrefab)
+                    childList.Add(child.gameObject);
             }
 #else
             List<GameObject> childList = new List<GameObject>();

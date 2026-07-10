@@ -230,7 +230,10 @@ namespace Unity.HLODSystem.Streaming
 #endif // SAFETY
 
 #if UNITY_EDITOR
-            DestroyImmediate(obj);
+            if (!Application.isPlaying)
+                DestroyImmediate(obj);
+            else
+                Destroy(obj);
 #else
             Destroy(obj);
 #endif
@@ -285,7 +288,7 @@ namespace Unity.HLODSystem.Streaming
             {
                 loadInfo.LoadFromCustom = true;
 #if UNITY_6000_3_OR_NEWER
-                void LoadDoneAction(GameObject obj)
+                void loadDoneAction(GameObject obj)
                 {
                     GameObject gameObject = Instantiate(obj, parent, false);
                     var t = gameObject.transform;
@@ -300,10 +303,8 @@ namespace Unity.HLODSystem.Streaming
                         callback?.Invoke(gameObject);
                     }
                 }
-                m_customLoader.CustomLoad(address, LoadDoneAction);
-#else
-                m_customLoader.CustomLoad(address, loadDoneAction);
 #endif // UNITY_6000_3_OR_NEWER
+                m_customLoader.CustomLoad(address, loadDoneAction);
             }            
 
             return loadInfo;

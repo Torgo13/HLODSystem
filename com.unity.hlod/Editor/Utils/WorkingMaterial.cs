@@ -196,7 +196,7 @@ namespace Unity.HLODSystem.Utils
         private static readonly Dictionary<string, int> shaderProperties
             = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        private static int ShaderProperty(string name)
+        public static int ShaderProperty(string name)
         {
             if (!shaderProperties.TryGetValue(name, out var value))
             {
@@ -236,7 +236,7 @@ namespace Unity.HLODSystem.Utils
         {
             m_name = mat.name;
             m_instanceID = mat.GetInstanceID();
-#if OPTIMISATION // Already eallocated in the base contructor
+#if OPTIMISATION // Already allocated in the base contructor
 #else
             m_textures.Dispose();
             m_textures = new DisposableDictionary<string, WorkingTexture>();
@@ -295,7 +295,7 @@ namespace Unity.HLODSystem.Utils
         {
             m_name = name;
             m_instanceID = materialId;
-#if OPTIMISATION // Already eallocated in the base contructor
+#if OPTIMISATION // Already allocated in the base contructor
 #else
             m_guid = System.Guid.NewGuid().ToString("N");
 #endif // OPTIMISATION

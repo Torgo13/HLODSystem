@@ -87,9 +87,10 @@ namespace Unity.HLODSystem.Utils
             return nwt;
         }
 
-        public Texture2D ToTexture()
+        public Texture2D ToTexture(
+            bool updateMipmaps = true, bool makeNoLongerReadable = false)
         {
-            return m_buffer.ToTexture();
+            return m_buffer.ToTexture(updateMipmaps, makeNoLongerReadable);
         }
         
         public Guid GetGUID()
@@ -311,13 +312,14 @@ namespace Unity.HLODSystem.Utils
             return buffer;
         }
 
-        public Texture2D ToTexture()
+        public Texture2D ToTexture(
+            bool updateMipmaps = true, bool makeNoLongerReadable = false)
         {
             Texture2D texture = new Texture2D(m_width, m_height, m_format, false, m_linear);
             texture.name = Name;
             texture.SetPixels(m_pixels.ToArray());
             texture.wrapMode = m_wrapMode;
-            texture.Apply();
+            texture.Apply(updateMipmaps, makeNoLongerReadable);
             return texture;
         }
         

@@ -103,7 +103,9 @@ namespace Unity.HLODSystem
             private void AddReusltFromLODGroup(LODGroup lodGroup, float minObjectSize)
             {
                 LOD[] lods = lodGroup.GetLODs();
-                Renderer[] renderers = lods.Last().renderers;
+                if (lods.Length == 0)
+                    return;
+                Renderer[] renderers = lods[^1].renderers;
                 for (int ri = 0; ri < renderers.Length; ++ri)
                 {
                     MeshRenderer? mr = renderers[ri] as MeshRenderer;

@@ -102,16 +102,16 @@ namespace Unity.HLODSystem
             /// If <paramref name="tex"/> is not readable, creates a readable copy.
             /// </summary>
             /// <remarks>
-            /// If <see cref="Texture2D.isReadable"/> returns <see langword="true"/>,
+            /// If <see cref="Texture2D.isReadable"/> returns <see langword="false"/>,
             /// the returned <see cref="Texture2D"/> should be destroyed when no longer needed.
             /// </remarks>
             /// <param name="tex">Input <see cref="Texture2D"/>.</param>
             /// <param name="mipChain">Whether to create mipmaps on the created <see cref="Texture2D"/>.</param>
-            /// <returns>The original <paramref name="tex"/> if it is already readable,
-            /// otherwise returns a readable copy.</returns>
+            /// <returns><see langword="false"/> if the original <paramref name="tex"/> is already readable,
+            /// <see langword="true"/> if a readable copy was created.</returns>
             public static bool ReadTexture(ref Texture2D tex, bool linear, bool mipChain = false)
             {
-                if (tex.isReadable)
+                if (tex.isReadable && !(mipChain && tex.mipmapCount == 0))
                     return false;
 
                 int width = tex.width;
@@ -564,6 +564,17 @@ namespace Unity.HLODSystem
         static
         private Color UnPackNormal(Color c, float scale)
         {
+#if BUGFIX // Handle DXT5nm normal maps
+            if (c.r >= 1)
+            {
+                c.r = (c.a * 2 - 1) * scale;
+                c.g = (c.g * 2 - 1) * scale;
+                var dot = c.r * c.r + c.g * c.g;
+                c.b = (float)Math.Sqrt(1.0 - Mathf.Clamp01(dot)) * 0.5f + 0.5f;
+                return c;
+            }
+#endif // BUGFIX
+
             c.r = (c.r * 2 - 1) * scale;
             c.g = (c.g * 2 - 1) * scale;
             c.b = c.b * 2 - 1;
@@ -973,6 +984,23 @@ namespace Unity.HLODSystem
             var uvs = mesh.uv;
 #endif // OPTIMISATION
 
+#if ZERO
+            for (int j = 0; j < UnityMeshSimplifier.MeshUtils.UVChannelCount; ++j)
+            {
+                var uvs = mesh[j];
+                if (!uvs.IsCreated || uvs.Length < mesh.vertexCount)
+                    continue;
+
+                for (int i = 0, vertexCount = mesh.vertexCount; i < vertexCount; ++i)
+                {
+                    Vector2 uv;
+                    uv.x = (vertices[i].x - heightmap.Offset.x) / heightmap.Size.x;
+                    uv.y = (vertices[i].z - heightmap.Offset.z) / heightmap.Size.z;
+                    uvs[i] = uv;
+                    //vertices[i].
+                }
+            }
+#else
             for (int i = 0, vertexCount = mesh.vertexCount; i < vertexCount; ++i)
             {
                 Vector2 uv;
@@ -981,6 +1009,7 @@ namespace Unity.HLODSystem
                 uvs[i] = uv;
                 //vertices[i].
             }
+#endif // ZERO
 
 #if OPTIMISATION
 #else
@@ -1421,15 +1450,18 @@ namespace Unity.HLODSystem
 
                                         for (int wi = 0; wi < info.WorkingObjects.Count; ++wi)
                                         {
+                                            string matName;
                                             WorkingObject wo = info.WorkingObjects[wi];
                                             GameObject targetGO;
                                             if (wi == 0)
                                             {
+                                                matName = go.name + "_Mat";
                                                 targetGO = go;
                                             }
                                             else
                                             {
-                                                targetGO = new GameObject(wi.ToString());
+                                                matName = wi.ToString() + "_Mat";
+                                                targetGO = new GameObject(matName);
                                                 targetGO.transform.SetParent(go.transform, false);
                                             }
 
@@ -1453,8 +1485,8 @@ namespace Unity.HLODSystem
                                                         continue;
                                                     Texture2D tex = wt.ToTexture();
                                                     tex.wrapMode = wt.WrapMode;
-                                                    mat.name = targetGO.name + "_Mat";
-                                                    mat.SetTexture(textureNames[ti], tex);
+                                                    mat.name = matName;
+                                                    mat.SetTexture(WorkingMaterialBuffer.ShaderProperty(textureNames[ti]), tex);
                                                 }
 
                                                 mat.EnableKeyword("_NORMALMAP");

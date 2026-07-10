@@ -381,8 +381,11 @@ namespace Unity.HLODSystem
                 //If the controller was created in the old version, must manually delete it.
                 for (int i = 0; i < controllers.Count; ++i)
                 {
+#if OPTIMISATION_NULL
+#else
                     if (controllers[i] == null)
                         continue;
+#endif // OPTIMISATION_NULL
 
                     Object.DestroyImmediate(controllers[i]);
                 }

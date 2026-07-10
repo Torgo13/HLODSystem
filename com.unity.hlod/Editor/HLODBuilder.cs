@@ -29,9 +29,9 @@ namespace Unity.HLODSystem
                 hlods.Clear();
                 terrainHlods.Clear();
 
-                FindComponentsInChild(rootObjects[oi], ref hlods);
-                FindComponentsInChild(rootObjects[oi], ref terrainHlods);
-                FindComponentsInChild(rootObjects[oi], ref terrains);
+                rootObjects[oi].GetComponentsInChildren(includeInactive: true, hlods);
+                rootObjects[oi].GetComponentsInChildren(includeInactive: true, terrainHlods);
+                rootObjects[oi].GetComponentsInChildren(includeInactive: true, terrains);
 
                 for (int hi = 0; hi < hlods.Count; ++hi)
                 {
@@ -49,8 +49,11 @@ namespace Unity.HLODSystem
 
             for (int ti = 0; ti < terrains.Count; ++ti)
             {
+#if OPTIMISATION_NULL
+#else
                 if (terrains[ti] == null)
                     continue;
+#endif // OPTIMISATION_NULL
 
                 bool needDestroy = needDestroyDatas.Contains(terrains[ti].terrainData);
                 if (needDestroy)
@@ -60,6 +63,7 @@ namespace Unity.HLODSystem
             }
         }
 
+#if UNUSED
         private void FindComponentsInChild<T>(GameObject target, ref List<T> components)
         {
             var component = target.GetComponent<T>();
@@ -71,6 +75,6 @@ namespace Unity.HLODSystem
                 FindComponentsInChild(child.gameObject, ref components);
             }
         }
-
+#endif // UNUSED
     }
 }

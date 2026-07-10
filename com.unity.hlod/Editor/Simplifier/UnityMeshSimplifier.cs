@@ -29,6 +29,9 @@ namespace Unity.HLODSystem.Simplifier
             var meshSimplifier = new global::UnityMeshSimplifier.MeshSimplifier(
                 origin.Vertices, origin.Normals, origin.Tangents,
                 origin.UV, origin.UV2, origin.UV3, origin.UV4,
+#if UNITY_8UV_SUPPORT
+                origin.UV5, origin.UV6, origin.UV7, origin.UV8,
+#endif // UNITY_8UV_SUPPORT
                 origin.Colors);
 #else
             var meshSimplifier = new global::UnityMeshSimplifier.MeshSimplifier();
@@ -39,9 +42,21 @@ namespace Unity.HLODSystem.Simplifier
             meshSimplifier.UV2 = origin.uv2;
             meshSimplifier.UV3 = origin.uv3;
             meshSimplifier.UV4 = origin.uv4;
+#if UNITY_8UV_SUPPORT
+            meshSimplifier.UV5 = origin.uv5;
+            meshSimplifier.UV6 = origin.uv6;
+            meshSimplifier.UV7 = origin.uv7;
+            meshSimplifier.UV8 = origin.uv8;
+#endif // UNITY_8UV_SUPPORT
             meshSimplifier.Colors = origin.colors;
 #endif // OPTIMISATION
 
+#if OPTIMISATION
+            for (var submesh = 0; submesh < origin.subMeshCount; submesh++)
+            {
+                meshSimplifier.AddSubMeshTriangles(origin.GetTrianglesNative(submesh));
+            }
+#else
             var triangles = new int[origin.subMeshCount][];
             for (var submesh = 0; submesh < origin.subMeshCount; submesh++)
             {
@@ -49,20 +64,23 @@ namespace Unity.HLODSystem.Simplifier
             }
 
             meshSimplifier.AddSubMeshTriangles(triangles);
+#endif // OPTIMISATION
 
             meshSimplifier.SimplifyMesh(quality);
 
-            var subMeshIndices = new System.Collections.Generic.List<int>();
             int triCount = 0;
             for (int i = 0; i < meshSimplifier.SubMeshCount; ++i)
             {
-                triCount += meshSimplifier.GetSubMeshTriangles(i, subMeshIndices).Count;
+                triCount += meshSimplifier.GetSubMeshTriangles(i).Length;
             }
 
 #if OPTIMISATION
             Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent,
                 meshSimplifier.VerticesSpan, meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
                 meshSimplifier.UVSpan, meshSimplifier.UV2Span, meshSimplifier.UV3Span, meshSimplifier.UV4Span,
+#if UNITY_8UV_SUPPORT
+                meshSimplifier.UV5Span, meshSimplifier.UV6Span, meshSimplifier.UV7Span, meshSimplifier.UV8Span,
+#endif // UNITY_8UV_SUPPORT
                 meshSimplifier.ColorsSpan, triCount, meshSimplifier.SubMeshCount, maxBindposes: 0);
             nwm.name = origin.name;
 #else
@@ -76,13 +94,18 @@ namespace Unity.HLODSystem.Simplifier
             nwm.uv2 = meshSimplifier.UV2;
             nwm.uv3 = meshSimplifier.UV3;
             nwm.uv4 = meshSimplifier.UV4;
+#if UNITY_8UV_SUPPORT
+            nwm.uv5 = meshSimplifier.UV5;
+            nwm.uv6 = meshSimplifier.UV6;
+            nwm.uv7 = meshSimplifier.UV7;
+            nwm.uv8 = meshSimplifier.UV8;
+#endif // UNITY_8UV_SUPPORT
             nwm.colors = meshSimplifier.Colors;
 #endif // OPTIMISATION
             nwm.subMeshCount = meshSimplifier.SubMeshCount;
-            subMeshIndices.Clear();
             for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
             {
-                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh, subMeshIndices), submesh);
+                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh), submesh);
             }
 
             if (resultCallback != null)

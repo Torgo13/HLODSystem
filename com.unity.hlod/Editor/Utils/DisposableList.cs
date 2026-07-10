@@ -16,6 +16,7 @@ namespace Unity.HLODSystem.Utils
         }
 
         public int Capacity { get => m_list.Capacity; set => m_list.Capacity = value; }
+        public T[] ToArray() => m_list.ToArray();
 
         public void EnsureCapacity(int capacity)
         {
