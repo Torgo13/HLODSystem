@@ -132,6 +132,680 @@ namespace Unity.HLODSystem.Utils
 
         const int k_MaxNameSize = 128;
         
+#if USING_COLLECTIONS
+#if OPTIMISATION
+        public NativeList<Vector2> this[int index] => index switch
+        {
+            1 => m_UV2,
+            2 => m_UV3,
+            3 => m_UV4,
+#if UNITY_8UV_SUPPORT
+            4 => m_UV5,
+            5 => m_UV6,
+            6 => m_UV7,
+            7 => m_UV8,
+#endif // UNITY_8UV_SUPPORT
+            _ => m_UV,
+        };
+        
+        public void SetVertices(System.Collections.Generic.List<Vector3> value)
+        {
+            vertexCount = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_Vertices.AsArray().AsSpan());
+        }
+        public void SetNormals(System.Collections.Generic.List<Vector3> value)
+        {
+            normalsCount = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_Normals.AsArray().AsSpan());
+        }
+        public void SetTangents(System.Collections.Generic.List<Vector4> value)
+        {
+            tangentsCount = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_Tangents.AsArray().AsSpan());
+        }
+        public void SetUV(System.Collections.Generic.List<Vector2> value)
+        {
+            uvCount = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV.AsArray().AsSpan());
+        }
+        public void SetUV2(System.Collections.Generic.List<Vector2> value)
+        {
+            uv2Count = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV2.AsArray().AsSpan());
+        }
+        public void SetUV3(System.Collections.Generic.List<Vector2> value)
+        {
+            uv3Count = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV3.AsArray().AsSpan());
+        }
+        public void SetUV4(System.Collections.Generic.List<Vector2> value)
+        {
+            uv4Count = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV4.AsArray().AsSpan());
+        }
+#if UNITY_8UV_SUPPORT
+        public void SetUV5(System.Collections.Generic.List<Vector2> value)
+        {
+            uv5Count = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV5.AsArray().AsSpan());
+        }
+        public void SetUV6(System.Collections.Generic.List<Vector2> value)
+        {
+            uv6Count = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV6.AsArray().AsSpan());
+        }
+        public void SetUV7(System.Collections.Generic.List<Vector2> value)
+        {
+            uv7Count = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV7.AsArray().AsSpan());
+        }
+        public void SetUV8(System.Collections.Generic.List<Vector2> value)
+        {
+            uv8Count = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_UV8.AsArray().AsSpan());
+        }
+#endif // UNITY_8UV_SUPPORT
+        public void SetColors(System.Collections.Generic.List<Color> value)
+        {
+            colorsCount = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_Colors.AsArray().AsSpan());
+        }
+        public void SetBoneWeights(System.Collections.Generic.List<BoneWeight> value)
+        {
+            boneWeightsCount = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_BoneWeights.AsArray().AsSpan());
+        }
+        public void SetBindposes(System.Collections.Generic.List<Matrix4x4> value)
+        {
+            bindposesCount = value.Count;
+            value.AsReadOnlySpan().CopyTo(m_Bindposes.AsArray().AsSpan());
+        }
+
+        /// <remarks>Background thread</remarks>
+        public NativeArray<int> GetTrianglesNative(int submesh)
+        {
+            if (submesh < m_SubmeshOffset.Length)
+            {
+                var start = 0;
+                var stop = 0;
+                GetTriangleRange(submesh, out start, out stop);
+                var length = stop - start;
+
+                return m_Triangles.AsArray().GetSubArray(start, length);
+            }
+
+            return new NativeArray<int>(0, Allocator.Temp);
+        }
+
+        /// <remarks>Background thread</remarks>
+        public void CopyFrom(WorkingMesh other)
+        {
+            vertexCount = other.vertexCount;
+            m_Vertices.CopyFrom(other.m_Vertices);
+            
+            normalsCount = other.normalsCount;
+            m_Normals.CopyFrom(other.m_Normals);
+            
+            uvCount = other.uvCount;
+            m_UV.CopyFrom(other.m_UV);
+        }
+
+        /// <remarks>Background thread</remarks>
+        public void CopyFrom(
+            System.Collections.Generic.List<Vector3> vertices,
+            System.Collections.Generic.List<Vector3> normals,
+            System.Collections.Generic.List<Vector4>? tangents = null,
+            System.Collections.Generic.List<Vector2>? uv = null,
+            System.Collections.Generic.List<Vector2>? uv2 = null,
+            System.Collections.Generic.List<Vector2>? uv3 = null,
+            System.Collections.Generic.List<Vector2>? uv4 = null,
+#if UNITY_8UV_SUPPORT
+            System.Collections.Generic.List<Vector2>? uv5 = null,
+            System.Collections.Generic.List<Vector2>? uv6 = null,
+            System.Collections.Generic.List<Vector2>? uv7 = null,
+            System.Collections.Generic.List<Vector2>? uv8 = null,
+#endif // UNITY_8UV_SUPPORT
+            System.Collections.Generic.List<Color>? colors = null,
+            System.ReadOnlySpan<Matrix4x4> bindposes = default,
+            System.Collections.Generic.List<BoneWeight>? boneWeights = null)
+        {
+            vertexCount = vertices.Count;
+            vertices.AsReadOnlySpan().CopyTo(m_Vertices.AsArray().AsSpan());
+            
+            normalsCount = normals.Count;
+            normals.AsReadOnlySpan().CopyTo(m_Normals.AsArray().AsSpan());
+
+            if (tangents != null)
+            {
+                tangentsCount = tangents.Count;
+                tangents.AsReadOnlySpan().CopyTo(m_Tangents.AsArray().AsSpan());
+            }
+
+            if (uv != null)
+            {
+                uvCount = uv.Count;
+                uv.AsReadOnlySpan().CopyTo(m_UV.AsArray().AsSpan());
+            }
+
+            if (uv2 != null)
+            {
+                uv2Count = uv2.Count;
+                uv2.AsReadOnlySpan().CopyTo(m_UV2.AsArray().AsSpan());
+            }
+
+            if (uv3 != null)
+            {
+                uv3Count = uv3.Count;
+                uv3.AsReadOnlySpan().CopyTo(m_UV3.AsArray().AsSpan());
+            }
+
+            if (uv4 != null)
+            {
+                uv4Count = uv4.Count;
+                uv4.AsReadOnlySpan().CopyTo(m_UV4.AsArray().AsSpan());
+            }
+
+#if UNITY_8UV_SUPPORT
+            if (uv5 != null)
+            {
+                uv5Count = uv5.Count;
+                uv5.AsReadOnlySpan().CopyTo(m_UV5.AsArray().AsSpan());
+            }
+
+            if (uv6 != null)
+            {
+                uv6Count = uv6.Count;
+                uv6.AsReadOnlySpan().CopyTo(m_UV6.AsArray().AsSpan());
+            }
+
+            if (uv7 != null)
+            {
+                uv7Count = uv7.Count;
+                uv7.AsReadOnlySpan().CopyTo(m_UV7.AsArray().AsSpan());
+            }
+
+            if (uv8 != null)
+            {
+                uv8Count = uv8.Count;
+                uv8.AsReadOnlySpan().CopyTo(m_UV8.AsArray().AsSpan());
+            }
+#endif // UNITY_8UV_SUPPORT
+
+            if (colors != null)
+            {
+                colorsCount = colors.Count;
+                colors.AsReadOnlySpan().CopyTo(m_Colors.AsArray().AsSpan());
+            }
+
+            if (bindposes != null)
+            {
+                bindposesCount = bindposes.Length;
+                bindposes.CopyTo(m_Bindposes.AsArray().AsSpan());
+            }
+
+            if (boneWeights != null)
+            {
+                boneWeightsCount = boneWeights.Count;
+                boneWeights.AsReadOnlySpan().CopyTo(m_BoneWeights.AsArray().AsSpan());
+            }
+        }
+
+        public int NormalsCount => normalsCount;
+        public int TangentsCount => tangentsCount;
+        public int UVCount => uvCount;
+        public int UV2Count => uv2Count;
+        public int UV3Count => uv3Count;
+        public int UV4Count => uv4Count;
+#if UNITY_8UV_SUPPORT
+        public int UV5Count => uv5Count;
+        public int UV6Count => uv6Count;
+        public int UV7Count => uv7Count;
+        public int UV8Count => uv8Count;
+#endif // UNITY_8UV_SUPPORT
+        public int ColorsCount => colorsCount;
+#endif // OPTIMISATION
+        
+        public Vector3[] vertices
+        {
+            get
+            {
+                return m_Vertices.AsArray().ToArray();
+            }
+            set
+            {
+                vertexCount = value.Length;
+                value.CopyTo(m_Vertices.AsArray().AsSpan());
+            }
+        }
+        NativeList<Vector3> m_Vertices;
+        public NativeList<Vector3> VerticesList => m_Vertices;
+        public NativeArray<Vector3> Vertices => m_Vertices.AsArray();
+
+        public int vertexCount
+        {
+            get { return m_Vertices.Length; }
+            private set { m_Vertices.ResizeUninitialized(value); }
+        }
+
+        public int[] triangles
+        {
+            get { return m_Triangles.AsArray().ToArray(); }
+            set
+            {
+                subMeshCount = 1;
+                trianglesCount = value.Length;
+                SetTriangles(value, 0);
+            }
+        }
+        NativeList<int> m_Triangles;
+        public NativeList<int> TrianglesList => m_Triangles;
+        public NativeArray<int> Triangles => m_Triangles.AsArray();
+
+        public int TrianglesCount => trianglesCount;
+        int trianglesCount
+        {
+            get { return m_Triangles.Length; }
+            set { m_Triangles.ResizeUninitialized(value); }
+        }
+
+        public Vector3[] normals
+        {
+            get { return m_Normals.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    normalsCount = 0;
+                }
+                else
+                {
+                    normalsCount = value.Length;
+                    value.CopyTo(m_Normals.AsArray());
+                }
+            }
+        }
+        NativeList<Vector3> m_Normals;
+        public NativeList<Vector3> NormalsList => m_Normals;
+        public NativeArray<Vector3> Normals => m_Normals.AsArray();
+
+        int normalsCount
+        {
+            get { return m_Normals.Length; }
+            set { m_Normals.ResizeUninitialized(value); }
+        }
+
+        public Vector4[] tangents
+        {
+            get { return m_Tangents.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    tangentsCount = 0;
+                }
+                else
+                {
+                    tangentsCount = value.Length;
+                    value.CopyTo(m_Tangents.AsArray());
+                }
+            }
+        }
+        NativeList<Vector4> m_Tangents;
+        public NativeList<Vector4> TangentsList => m_Tangents;
+        public NativeArray<Vector4> Tangents => m_Tangents.AsArray();
+
+        int tangentsCount
+        {
+            get { return m_Tangents.Length; }
+            set { m_Tangents.ResizeUninitialized(value); }
+        }
+
+        public Vector2[] uv
+        {
+            get { return m_UV.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uvCount = 0;
+                }
+                else
+                {
+                    uvCount = value.Length;
+                    value.CopyTo(m_UV.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV;
+        public NativeList<Vector2> UVList => m_UV;
+        public NativeArray<Vector2> UV => m_UV.AsArray();
+
+        int uvCount
+        {
+            get { return m_UV.Length; }
+            set { m_UV.ResizeUninitialized(value); }
+        }
+
+        public Vector2[] uv2
+        {
+            get { return m_UV2.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv2Count = 0;
+                }
+                else
+                {
+                    uv2Count = value.Length;
+                    value.CopyTo(m_UV2.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV2;
+        public NativeList<Vector2> UV2List => m_UV2;
+        public NativeArray<Vector2> UV2 => m_UV2.AsArray();
+
+        int uv2Count
+        {
+            get { return m_UV2.Length; }
+            set { m_UV2.ResizeUninitialized(value); }
+        }
+
+        public Vector2[] uv3
+        {
+            get { return m_UV3.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv3Count = 0;
+                }
+                else
+                {
+                    uv3Count = value.Length;
+                    value.CopyTo(m_UV3.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV3;
+        public NativeList<Vector2> UV3List => m_UV3;
+        public NativeArray<Vector2> UV3 => m_UV3.AsArray();
+
+        int uv3Count
+        {
+            get { return m_UV3.Length; }
+            set { m_UV3.ResizeUninitialized(value); }
+        }
+
+        public Vector2[] uv4
+        {
+            get { return m_UV4.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv4Count = 0;
+                }
+                else
+                {
+                    uv4Count = value.Length;
+                    value.CopyTo(m_UV4.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV4;
+        public NativeList<Vector2> UV4List => m_UV4;
+        public NativeArray<Vector2> UV4 => m_UV4.AsArray();
+
+        int uv4Count
+        {
+            get { return m_UV4.Length; }
+            set { m_UV4.ResizeUninitialized(value); }
+        }
+
+#if UNITY_8UV_SUPPORT
+        public Vector2[] uv5
+        {
+            get { return m_UV5.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv5Count = 0;
+                }
+                else
+                {
+                    uv5Count = value.Length;
+                    value.CopyTo(m_UV5.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV5;
+        public NativeList<Vector2> UV5List => m_UV5;
+        public NativeArray<Vector2> UV5 => m_UV5.AsArray();
+
+        int uv5Count
+        {
+            get { return m_UV5.Length; }
+            set { m_UV5.ResizeUninitialized(value); }
+        }
+
+        public Vector2[] uv6
+        {
+            get { return m_UV6.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv6Count = 0;
+                }
+                else
+                {
+                    uv6Count = value.Length;
+                    value.CopyTo(m_UV6.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV6;
+        public NativeList<Vector2> UV6List => m_UV6;
+        public NativeArray<Vector2> UV6 => m_UV6.AsArray();
+
+        int uv6Count
+        {
+            get { return m_UV6.Length; }
+            set { m_UV6.ResizeUninitialized(value); }
+        }
+
+        public Vector2[] uv7
+        {
+            get { return m_UV7.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv7Count = 0;
+                }
+                else
+                {
+                    uv7Count = value.Length;
+                    value.CopyTo(m_UV7.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV7;
+        public NativeList<Vector2> UV7List => m_UV7;
+        public NativeArray<Vector2> UV7 => m_UV7.AsArray();
+
+        int uv7Count
+        {
+            get { return m_UV7.Length; }
+            set { m_UV7.ResizeUninitialized(value); }
+        }
+
+        public Vector2[] uv8
+        {
+            get { return m_UV8.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    uv8Count = 0;
+                }
+                else
+                {
+                    uv8Count = value.Length;
+                    value.CopyTo(m_UV8.AsArray());
+                }
+            }
+        }
+        NativeList<Vector2> m_UV8;
+        public NativeList<Vector2> UV8List => m_UV8;
+        public NativeArray<Vector2> UV8 => m_UV8.AsArray();
+
+        int uv8Count
+        {
+            get { return m_UV8.Length; }
+            set { m_UV8.ResizeUninitialized(value); }
+        }
+#endif // UNITY_8UV_SUPPORT
+
+        public Color[] colors
+        {
+            get { return m_Colors.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    colorsCount = 0;
+                }
+                else
+                {
+                    colorsCount = value.Length;
+                    value.CopyTo(m_Colors.AsArray());
+                }
+            }
+        }
+        NativeList<Color> m_Colors;
+        public NativeList<Color> ColorsList => m_Colors;
+        public NativeArray<Color> Colors => m_Colors.AsArray();
+
+        int colorsCount
+        {
+            get { return m_Colors.Length; }
+            set { m_Colors.ResizeUninitialized(value); }
+        }
+
+        public Color32[] colors32
+        {
+            get { return colors.Select(c => (Color32)c).ToArray(); }
+            set { colors = value.Select(c => (Color)c).ToArray(); }
+        }
+
+        public BoneWeight[] boneWeights
+        {
+            get { return m_BoneWeights.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    boneWeightsCount = 0;
+                }
+                else
+                {
+                    boneWeightsCount = value.Length;
+                    value.CopyTo(m_BoneWeights.AsArray());
+                }
+            }
+        }
+        NativeList<BoneWeight> m_BoneWeights;
+        public NativeList<BoneWeight> BoneWeightsList => m_BoneWeights;
+        public NativeArray<BoneWeight> BoneWeights => m_BoneWeights.AsArray();
+
+        int boneWeightsCount
+        {
+            get { return m_BoneWeights.Length; }
+            set { m_BoneWeights.ResizeUninitialized(value); }
+        }
+
+        public Matrix4x4[] bindposes
+        {
+            get { return m_Bindposes.AsArray().ToArray(); }
+            set
+            {
+                if (value == null || value.Length == 0)
+                {
+                    bindposesCount = 0;
+                }
+                else
+                {
+                    bindposesCount = value.Length;
+                    value.CopyTo(m_Bindposes.AsArray());
+                }
+            }
+        }
+        NativeList<Matrix4x4> m_Bindposes;
+        public NativeList<Matrix4x4> BindposesList => m_Bindposes;
+        public NativeArray<Matrix4x4> Bindposes => m_Bindposes.AsArray();
+
+        int bindposesCount
+        {
+            get { return m_Bindposes.Length; }
+            set { m_Bindposes.ResizeUninitialized(value); }
+        }
+
+        public int subMeshCount
+        {
+            get { return submeshOffsetCount; }
+            set
+            {
+                if (submeshOffsetCount == value)
+                    return;
+
+                var previousCount = submeshOffsetCount;
+                submeshOffsetCount = value;
+                for (var i = previousCount; i < submeshOffsetCount; i++)
+                {
+                    // Initialize these offsets to be invalid, so we don't use stale values
+                    m_SubmeshOffset[i] = -1;
+                }
+            }
+        }
+        NativeList<int> m_SubmeshOffset;
+        public NativeList<int> SubmeshOffsetList => m_SubmeshOffset;
+        public NativeArray<int> SubmeshOffset => m_SubmeshOffset.AsArray();
+
+        int submeshOffsetCount
+        {
+            get { return m_SubmeshOffset.Length; }
+            set { m_SubmeshOffset.ResizeUninitialized(value); }
+        }
+
+        public string name
+        {
+            get { return Encoding.UTF8.GetString(m_Name.AsArray().AsReadOnlySpan()); }
+            set
+            {
+                if (string.IsNullOrEmpty(value))
+                    value = string.Empty;
+
+                var bytes = new NativeArray<byte>(Encoding.UTF8.GetByteCount(value),
+                    Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+                Encoding.UTF8.GetBytes(value, bytes);
+                m_Name.Clear();
+                m_Name.AddRange(bytes);
+                bytes.Dispose();
+            }
+        }
+        NativeList<byte> m_Name;
+        public NativeList<byte> NameList => m_Name;
+        public NativeArray<byte> Name => m_Name.AsArray();
+
+        // This data does not cross the job threshold, so if it needs to be read back, then it will need to be
+        // in a NativeArray or some other type of NativeContainer
+        public IndexFormat indexFormat { get; set; }
+        public Bounds bounds { get; set; }
+#else
 #if OPTIMISATION
         public NativeArray<Vector3> Vertices
         {
@@ -989,6 +1663,7 @@ namespace Unity.HLODSystem.Utils
         public Bounds bounds { get; set; }
 
         NativeArray<int> m_Counts;
+#endif // USING_COLLECTIONS
 
         // These are stubbed out for API completeness, but obviously don't do anything
         public void RecalculateBounds() { }
@@ -1036,12 +1711,12 @@ namespace Unity.HLODSystem.Utils
             {
                 var offset = preSliceLength + triangles.Length;
                 m_SubmeshOffset[submesh + 1] = offset;
-                var sourceSlice = new NativeSlice<int>(m_Triangles, postSliceOffset, postSliceLength);
-                var destSlice = new NativeSlice<int>(m_Triangles, offset, postSliceLength);
+                var sourceSlice = Triangles.GetSubArray(postSliceOffset, postSliceLength);
+                var destSlice = Triangles.GetSubArray(offset, postSliceLength);
                 destSlice.CopyFrom(sourceSlice);
             }
 
-            triangles.CopyTo(m_Triangles.AsSpan().Slice(preSliceLength, triangles.Length));
+            triangles.CopyTo(Triangles.AsSpan().Slice(preSliceLength, triangles.Length));
         }
 
         public int[] GetTriangles(int submesh)
@@ -1053,7 +1728,7 @@ namespace Unity.HLODSystem.Utils
                 GetTriangleRange(submesh, out start, out stop);
                 var length = stop - start;
 
-                var slice = new NativeSlice<int>(m_Triangles, start, length);
+                var slice = Triangles.GetSubArray(start, length);
                 return slice.ToArray();
             }
 
@@ -1081,6 +1756,28 @@ namespace Unity.HLODSystem.Utils
         /// <remarks>Background thread</remarks>
         public WorkingMesh(Allocator allocator, int maxVertices, int maxTriangles, int maxSubmeshes, int maxBindposes) 
         {
+#if USING_COLLECTIONS // Does not require m_Counts
+            var allocatorHandle = (AllocatorManager.AllocatorHandle)allocator;
+            m_Vertices = new NativeList<Vector3>(allocatorHandle);
+            m_Normals = new NativeList<Vector3>(allocatorHandle);
+            m_Tangents = new NativeList<Vector4>(allocatorHandle);
+            m_UV = new NativeList<Vector2>(allocatorHandle);
+            m_UV2 = new NativeList<Vector2>(allocatorHandle);
+            m_UV3 = new NativeList<Vector2>(allocatorHandle);
+            m_UV4 = new NativeList<Vector2>(allocatorHandle);
+#if UNITY_8UV_SUPPORT
+            m_UV5 = new NativeList<Vector2>(allocatorHandle);
+            m_UV6 = new NativeList<Vector2>(allocatorHandle);
+            m_UV7 = new NativeList<Vector2>(allocatorHandle);
+            m_UV8 = new NativeList<Vector2>(allocatorHandle);
+#endif // UNITY_8UV_SUPPORT
+            m_Colors = new NativeList<Color>(allocatorHandle);
+            m_BoneWeights = new NativeList<BoneWeight>(allocatorHandle);
+            m_Bindposes = new NativeList<Matrix4x4>(allocatorHandle);
+            m_Name = new NativeList<byte>(allocatorHandle);
+            m_SubmeshOffset = new NativeList<int>(allocatorHandle);
+            m_Triangles = new NativeList<int>(allocatorHandle);
+#else
 #if OPTIMISATION
             m_Counts = new NativeArray<int>(ChannelCount, allocator);
 #else
@@ -1105,6 +1802,7 @@ namespace Unity.HLODSystem.Utils
             m_Name = new NativeArray<byte>(k_MaxNameSize, allocator);
             m_SubmeshOffset = new NativeArray<int>(maxSubmeshes, allocator);
             m_Triangles = new NativeArray<int>(maxTriangles, allocator);
+#endif // USING_COLLECTIONS
         }
 
 #if OPTIMISATION
@@ -1118,6 +1816,28 @@ namespace Unity.HLODSystem.Utils
 #endif // UNITY_8UV_SUPPORT
             ReadOnlySpan<Color> colors, int maxTriangles, int maxSubmeshes, int maxBindposes)
         {
+#if USING_COLLECTIONS
+            var allocatorHandle = (AllocatorManager.AllocatorHandle)allocator;
+            m_Vertices = new NativeList<Vector3>(vertices.Length, allocatorHandle);
+            m_Normals = new NativeList<Vector3>(normals.Length, allocatorHandle);
+            m_Tangents = new NativeList<Vector4>(tangents.Length, allocatorHandle);
+            m_UV = new NativeList<Vector2>(uvs.Length, allocatorHandle);
+            m_UV2 = new NativeList<Vector2>(uv2.Length, allocatorHandle);
+            m_UV3 = new NativeList<Vector2>(uv3.Length, allocatorHandle);
+            m_UV4 = new NativeList<Vector2>(uv4.Length, allocatorHandle);
+#if UNITY_8UV_SUPPORT
+            m_UV5 = new NativeList<Vector2>(uv5.Length, allocatorHandle);
+            m_UV6 = new NativeList<Vector2>(uv6.Length, allocatorHandle);
+            m_UV7 = new NativeList<Vector2>(uv7.Length, allocatorHandle);
+            m_UV8 = new NativeList<Vector2>(uv8.Length, allocatorHandle);
+#endif // UNITY_8UV_SUPPORT
+            m_Colors = new NativeList<Color>(colors.Length, allocatorHandle);
+            m_BoneWeights = new NativeList<BoneWeight>(allocatorHandle);
+            m_Bindposes = new NativeList<Matrix4x4>(allocatorHandle);
+            m_Name = new NativeList<byte>(allocatorHandle);
+            m_SubmeshOffset = new NativeList<int>(allocatorHandle);
+            m_Triangles = new NativeList<int>(allocatorHandle);
+#else
             int maxVertices = vertices.Length;
             m_Counts = new NativeArray<int>(ChannelCount, allocator);
             m_Vertices = new NativeArray<Vector3>(maxVertices, allocator);
@@ -1139,21 +1859,7 @@ namespace Unity.HLODSystem.Utils
             m_Name = new NativeArray<byte>(k_MaxNameSize, allocator);
             m_SubmeshOffset = new NativeArray<int>(maxSubmeshes, allocator);
             m_Triangles = new NativeArray<int>(maxTriangles, allocator);
-
-            vertices.CopyTo(m_Vertices);
-            normals.CopyTo(m_Normals);
-            tangents.CopyTo(m_Tangents);
-            uvs.CopyTo(m_UV);
-            uv2.CopyTo(m_UV2);
-            uv3.CopyTo(m_UV3);
-            uv4.CopyTo(m_UV4);
-#if UNITY_8UV_SUPPORT
-            uv5.CopyTo(m_UV5);
-            uv6.CopyTo(m_UV6);
-            uv7.CopyTo(m_UV7);
-            uv8.CopyTo(m_UV8);
-#endif // UNITY_8UV_SUPPORT
-            colors.CopyTo(m_Colors);
+#endif // USING_COLLECTIONS
 
             vertexCount = vertices.Length;
             normalsCount = normals.Length;
@@ -1169,14 +1875,32 @@ namespace Unity.HLODSystem.Utils
             uv8Count = uv8.Length;
 #endif // UNITY_8UV_SUPPORT
             colorsCount = colors.Length;
+
+            vertices.CopyTo(Vertices.AsSpan());
+            normals.CopyTo(Normals.AsSpan());
+            tangents.CopyTo(Tangents.AsSpan());
+            uvs.CopyTo(UV.AsSpan());
+            uv2.CopyTo(UV2.AsSpan());
+            uv3.CopyTo(UV3.AsSpan());
+            uv4.CopyTo(UV4.AsSpan());
+#if UNITY_8UV_SUPPORT
+            uv5.CopyTo(UV5.AsSpan());
+            uv6.CopyTo(UV6.AsSpan());
+            uv7.CopyTo(UV7.AsSpan());
+            uv8.CopyTo(UV8.AsSpan());
+#endif // UNITY_8UV_SUPPORT
+            colors.CopyTo(Colors.AsSpan());
         }
 #endif // OPTIMISATION
 
         /// <remarks>Background thread</remarks>
         public void Dispose()
         {
+#if USING_COLLECTIONS
+#else
             if (m_Counts.IsCreated)
                 m_Counts.Dispose();
+#endif // USING_COLLECTIONS
 
             if (m_Vertices.IsCreated)
                 m_Vertices.Dispose();
@@ -1248,23 +1972,23 @@ namespace Unity.HLODSystem.Utils
                 : indexFormat;
 
 #if OPTIMISATION
-            mesh.SetVertices(m_Vertices.GetSubArray(0, vertexCount));
-            mesh.SetNormals(m_Normals.GetSubArray(0, normalsCount));
-            mesh.SetTangents(m_Tangents.GetSubArray(0, tangentsCount));
-            mesh.SetUVs(0, m_UV.GetSubArray(0, uvCount));
-            mesh.SetUVs(1, m_UV2.GetSubArray(0, uv2Count));
-            mesh.SetUVs(2, m_UV3.GetSubArray(0, uv3Count));
-            mesh.SetUVs(3, m_UV4.GetSubArray(0, uv4Count));
+            mesh.SetVertices(Vertices.GetSubArray(0, vertexCount));
+            mesh.SetNormals(Normals.GetSubArray(0, normalsCount));
+            mesh.SetTangents(Tangents.GetSubArray(0, tangentsCount));
+            mesh.SetUVs(0, UV.GetSubArray(0, uvCount));
+            mesh.SetUVs(1, UV2.GetSubArray(0, uv2Count));
+            mesh.SetUVs(2, UV3.GetSubArray(0, uv3Count));
+            mesh.SetUVs(3, UV4.GetSubArray(0, uv4Count));
 #if UNITY_8UV_SUPPORT
-            mesh.SetUVs(4, m_UV5.GetSubArray(0, uv5Count));
-            mesh.SetUVs(5, m_UV6.GetSubArray(0, uv6Count));
-            mesh.SetUVs(6, m_UV7.GetSubArray(0, uv7Count));
-            mesh.SetUVs(7, m_UV8.GetSubArray(0, uv8Count));
+            mesh.SetUVs(4, UV5.GetSubArray(0, uv5Count));
+            mesh.SetUVs(5, UV6.GetSubArray(0, uv6Count));
+            mesh.SetUVs(6, UV7.GetSubArray(0, uv7Count));
+            mesh.SetUVs(7, UV8.GetSubArray(0, uv8Count));
 #endif // UNITY_8UV_SUPPORT
-            mesh.SetColors(m_Colors.GetSubArray(0, colorsCount));
+            mesh.SetColors(Colors.GetSubArray(0, colorsCount));
             mesh.boneWeights = boneWeights;
             if (bindposesCount != 0)
-                mesh.SetBindposes(m_Bindposes.GetSubArray(0, bindposesCount));
+                mesh.SetBindposes(Bindposes.GetSubArray(0, bindposesCount));
 #else
             mesh.vertices = vertices;
             mesh.normals = normals;

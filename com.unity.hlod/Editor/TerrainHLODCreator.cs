@@ -261,8 +261,8 @@ namespace Unity.HLODSystem
                 float u = (wx + m_offset.x) / m_size.x;
                 float v = (wz + m_offset.y) / m_size.y;
 
-                float mipx = Mathf.Max(0, sx / (m_chunkSize * 2.0f) - 1);
-                float mipy = Mathf.Max(0, sz / (m_chunkSize * 2.0f) - 1);
+                float mipx = Mathf.Max(0, sx / m_chunkSize);
+                float mipy = Mathf.Max(0, sz / m_chunkSize);
 
                 float mip = Mathf.Max(mipx, mipy);
 
@@ -274,7 +274,7 @@ namespace Unity.HLODSystem
             {
                 Vector3 uv = GetUVByWorld(wx, wz, sx, sz);
 
-                return GetColor(uv.x, uv.y, Mathf.RoundToInt(uv.z));
+                return GetColor(uv.x, uv.y, Mathf.CeilToInt(uv.z));
             }
 
             /// <remarks>Background thread</remarks>
@@ -293,7 +293,7 @@ namespace Unity.HLODSystem
             {
                 Vector3 uv = GetUVByWorld(wx, wz, sx, sz);
 
-                return GetMask(uv.x, uv.y, Mathf.RoundToInt(uv.z));
+                return GetMask(uv.x, uv.y, Mathf.CeilToInt(uv.z));
             }
 
             /// <remarks>Background thread</remarks>
@@ -312,7 +312,7 @@ namespace Unity.HLODSystem
             {
                 Vector3 uv = GetUVByWorld(wx, wz, sx, sz);
 
-                return GetNormal(uv.x, uv.y, Mathf.RoundToInt(uv.z));
+                return GetNormal(uv.x, uv.y, Mathf.CeilToInt(uv.z));
             }
 
 #if UNUSED
@@ -467,16 +467,27 @@ namespace Unity.HLODSystem
 
             const Allocator allocator = Allocator.TempJob;
             const NativeArrayOptions options = NativeArrayOptions.UninitializedMemory;
+#if USING_COLLECTIONS
+            var vertices = mesh.VerticesList;
+            var normals = mesh.NormalsList;
+            var uvs = mesh.UVList;
+            vertices.Clear();
+            normals.Clear();
+            uvs.Clear();
+            vertices.Length = (heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x);
+            normals.Length = (heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x);
+            uvs.Length = (heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x);
+#else
             var vertices = new NativeArray<Vector3>((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x),
                 allocator, options);
             var normals = new NativeArray<Vector3>((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x),
                 allocator, options);
             var uvs = new NativeArray<Vector2>((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x),
                 allocator, options);
+#endif // USING_COLLECTIONS
             var triangles = new NativeArray<int>(
                 (heightmap.Width - borderWidth2x - 1) * (heightmap.Height - borderWidth2x - 1) * 6,
                 allocator, options);
-
 
             int vi = 0;
             //except border line
@@ -523,13 +534,16 @@ namespace Unity.HLODSystem
                 }
             }
 
+#if USING_COLLECTIONS
+#else
             mesh.Vertices = vertices;
             mesh.Normals = normals;
             mesh.UV = uvs;
-            mesh.SetTriangles(triangles, 0);
             vertices.Dispose();
             normals.Dispose();
             uvs.Dispose();
+#endif // USING_COLLECTIONS
+            mesh.SetTriangles(triangles, 0);
             triangles.Dispose();
 
             return mesh;
@@ -1470,12 +1484,12 @@ namespace Unity.HLODSystem
                                             GameObject targetGO;
                                             if (wi == 0)
                                             {
-                                                matName = go.name + "_Mat";
+                                                matName = $"{go.name}_Mat";
                                                 targetGO = go;
                                             }
                                             else
                                             {
-                                                matName = wi.ToString() + "_Mat";
+                                                matName = $"{wi}_Mat";
                                                 targetGO = new GameObject(matName);
                                                 targetGO.transform.SetParent(go.transform, false);
                                             }

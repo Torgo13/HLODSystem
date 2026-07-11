@@ -22,9 +22,9 @@ namespace Unity.HLODSystem.Simplifier
 
         protected override IEnumerator GetSimplifiedMesh(Utils.WorkingMesh origin, float quality, Action<Utils.WorkingMesh>? resultCallback)
         {
-#if USING_COLLECTIONS
+#if OPTIMISATION_IDISPOSABLE
             using
-#endif // USING_COLLECTIONS
+#endif // OPTIMISATION_IDISPOSABLE
 #if OPTIMISATION
             var meshSimplifier = new global::UnityMeshSimplifier.MeshSimplifier(
                 origin.Vertices, origin.Normals, origin.Tangents,
@@ -54,7 +54,7 @@ namespace Unity.HLODSystem.Simplifier
 #if OPTIMISATION
             for (var submesh = 0; submesh < origin.subMeshCount; submesh++)
             {
-                meshSimplifier.AddSubMeshTriangles(origin.GetTrianglesNative(submesh));
+                meshSimplifier.AddSubMeshTriangles(origin.GetTrianglesNative(submesh).AsReadOnlySpan());
             }
 #else
             var triangles = new int[origin.subMeshCount][];

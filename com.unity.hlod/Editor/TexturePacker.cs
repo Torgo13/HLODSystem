@@ -274,8 +274,9 @@ namespace Unity.HLODSystem
                 int itemSize = packTextureSize / itemCount;
                 TextureAtlas atlas;
 
-                _ = CreateResizedTextures(itemSize, itemSize, m_textures, resizedTextures);
                 combiners.Dispose();
+                resizedTextures.Dispose();
+                _ = CreateResizedTextures(itemSize, itemSize, m_textures, resizedTextures);
                 {
                     List<Rect> uvs = new List<Rect>(resizedTextures.Count);
                     List<Guid> guids = new List<Guid>(resizedTextures.Count);
@@ -413,8 +414,6 @@ namespace Unity.HLODSystem
                 DisposableList<MaterialTexture> resizedTextures, DisposableList<TextureCombiner> combiners,
                 List<TextureAtlas> atlases)
             {
-                resizedTextures.Dispose();
-                combiners.Dispose();
                 atlases.Clear();
                 for (int i = 0; i < m_sources.Count; ++i)
                 {
