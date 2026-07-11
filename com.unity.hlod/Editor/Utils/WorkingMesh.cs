@@ -11,18 +11,16 @@ namespace Unity.HLODSystem.Utils
     {
         public static WorkingMesh ToWorkingMesh(this Mesh mesh, Allocator allocator)
         {
-            var bindposes = UnityEngine.Pool.ListPool<Matrix4x4>.Get();
-            mesh.GetBindposes(bindposes);
-            var wm = new WorkingMesh(allocator, mesh.vertexCount, mesh.triangles.Length, mesh.subMeshCount, bindposes.Count);
+            var bindposes = mesh.GetBindposes().AsReadOnlySpan();
+            var wm = new WorkingMesh(allocator, mesh.vertexCount, mesh.triangles.Length, mesh.subMeshCount, bindposes.Length);
             mesh.ApplyToWorkingMesh(ref wm, bindposes);
-            UnityEngine.Pool.ListPool<Matrix4x4>.Release(bindposes);
             return wm;
         }
 
         // Taking bindposes optional parameter is ugly, but saves an additional array allocation if it was already
         // accessed to get the length
         public static void ApplyToWorkingMesh(this Mesh mesh, ref WorkingMesh wm,
-            System.Collections.Generic.List<Matrix4x4> bindposes)
+            ReadOnlySpan<Matrix4x4> bindposes)
         {
             wm.indexFormat = mesh.indexFormat;
 #if OPTIMISATION
@@ -99,7 +97,7 @@ namespace Unity.HLODSystem.Utils
             {
                 triangles.Clear();
                 mesh.GetTriangles(triangles, i);
-                wm.SetTriangles(triangles, i);
+                wm.SetTriangles(triangles.AsReadOnlySpan(), i);
             }
             wm.name = mesh.name;
             wm.bounds = mesh.bounds;
@@ -449,7 +447,7 @@ namespace Unity.HLODSystem.Utils
             System.Collections.Generic.List<Vector2>? uv8 = null,
 #endif // UNITY_8UV_SUPPORT
             System.Collections.Generic.List<Color>? colors = null,
-            System.Collections.Generic.List<Matrix4x4>? bindposes = null,
+            System.ReadOnlySpan<Matrix4x4> bindposes = default,
             System.Collections.Generic.List<BoneWeight>? boneWeights = null)
         {
             vertexCount = vertices.Count;
@@ -558,11 +556,8 @@ namespace Unity.HLODSystem.Utils
 
             if (bindposes != null)
             {
-                bindposesCount = bindposes.Count;
-                for (int i = 0; i < bindposesCount; i++)
-                {
-                    m_Bindposes[i] = bindposes[i];
-                }
+                bindposesCount = bindposes.Length;
+                bindposes.CopyTo(m_Bindposes);
             }
 
             if (boneWeights != null)
@@ -1047,59 +1042,6 @@ namespace Unity.HLODSystem.Utils
             }
 
             triangles.CopyTo(m_Triangles.AsSpan().Slice(preSliceLength, triangles.Length));
-        }
-
-        /// <remarks>Background thread</remarks>
-        public void SetTriangles(System.Collections.Generic.List<int> triangles, int submesh)
-        {
-            if (submesh >= subMeshCount)
-                subMeshCount = submesh + 1;
-
-            var preSliceLength = m_SubmeshOffset[submesh];
-            if (preSliceLength < 0)
-            {
-                if (submesh > 0)
-                {
-                    m_SubmeshOffset[submesh] = trianglesCount;
-                    preSliceLength = trianglesCount;
-                }
-                else
-                {
-                    m_SubmeshOffset[submesh] = 0;
-                    preSliceLength = 0;
-                }
-            }
-            var totalCount = preSliceLength; // count prior to submesh
-            totalCount += triangles.Count; // new submesh triangle count
-
-            var postSliceOffset = 0;
-            var postSliceLength = 0;
-            if (submesh < subMeshCount - 2) // count of all triangles after submesh
-            {
-                postSliceOffset = m_SubmeshOffset[submesh + 1];
-                if (postSliceOffset >= 0)
-                {
-                    postSliceLength = trianglesCount - postSliceOffset;
-                    totalCount += postSliceLength;
-                }
-            }
-
-            trianglesCount = totalCount;
-
-            // Shift other following triangles up/down
-            if (postSliceOffset > 0)
-            {
-                var offset = preSliceLength + triangles.Count;
-                m_SubmeshOffset[submesh + 1] = offset;
-                var sourceSlice = m_Triangles.GetSubArray(postSliceOffset, postSliceLength);
-                var destSlice = m_Triangles.GetSubArray(offset, postSliceLength);
-                destSlice.CopyFrom(sourceSlice);
-            }
-
-            for (int i = 0; i < triangles.Count; i++)
-            {
-                m_Triangles[i + preSliceLength] = triangles[i];
-            }
         }
 
         public int[] GetTriangles(int submesh)

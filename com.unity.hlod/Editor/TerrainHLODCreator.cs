@@ -106,6 +106,7 @@ namespace Unity.HLODSystem
             /// the returned <see cref="Texture2D"/> should be destroyed when no longer needed.
             /// </remarks>
             /// <param name="tex">Input <see cref="Texture2D"/>.</param>
+            /// <param name="linear"></param>
             /// <param name="mipChain">Whether to create mipmaps on the created <see cref="Texture2D"/>.</param>
             /// <returns><see langword="false"/> if the original <paramref name="tex"/> is already readable,
             /// <see langword="true"/> if a readable copy was created.</returns>
@@ -152,6 +153,7 @@ namespace Unity.HLODSystem
             }
 #endif // BUGFIX
 
+            static
             void MakeTexture(TerrainLayer layer, Texture2D? texture, Color min, Color max, DisposableList<WorkingTexture> results)
             {
                 if (texture == null)
@@ -463,13 +465,17 @@ namespace Unity.HLODSystem
 
             mesh.name = name + "_Mesh";
 
-
-            Vector3[] vertices =  new Vector3[(heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x)];
-            Vector3[] normals = new Vector3[(heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x)];
-            Vector2[] uvs = new Vector2[(heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x)];
+            const Allocator allocator = Allocator.TempJob;
+            const NativeArrayOptions options = NativeArrayOptions.UninitializedMemory;
+            var vertices = new NativeArray<Vector3>((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x),
+                allocator, options);
+            var normals = new NativeArray<Vector3>((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x),
+                allocator, options);
+            var uvs = new NativeArray<Vector2>((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x),
+                allocator, options);
             var triangles = new NativeArray<int>(
                 (heightmap.Width - borderWidth2x - 1) * (heightmap.Height - borderWidth2x - 1) * 6,
-                Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+                allocator, options);
 
 
             int vi = 0;
@@ -480,12 +486,16 @@ namespace Unity.HLODSystem
                 {
                     int index = vi++;
 
-                    vertices[index].x = bounds.size.x * (x) / (heightmap.Width - 1) + bounds.min.x;
-                    vertices[index].y = heightmap.Size.y * heightmap[z, x];
-                    vertices[index].z = bounds.size.z * (z) / (heightmap.Height - 1) + bounds.min.z;
+                    Vector3 vertex;
+                    vertex.x = bounds.size.x * (x) / (heightmap.Width - 1) + bounds.min.x;
+                    vertex.y = heightmap.Size.y * heightmap[z, x];
+                    vertex.z = bounds.size.z * (z) / (heightmap.Height - 1) + bounds.min.z;
+                    vertices[index] = vertex;
 
-                    uvs[index].x = (float)x / (heightmap.Width - 1);
-                    uvs[index].y = (float)z / (heightmap.Height - 1);
+                    Vector2 uv;
+                    uv.x = (float)x / (heightmap.Width - 1);
+                    uv.y = (float)z / (heightmap.Height - 1);
+                    uvs[index] = uv;
                     
                     normals[index] = heightmap.GetInterpolatedNormal(uvs[index].x, uvs[index].y);
                     
@@ -513,10 +523,13 @@ namespace Unity.HLODSystem
                 }
             }
 
-            mesh.vertices = vertices;
-            mesh.normals = normals;
-            mesh.uv = uvs;
+            mesh.Vertices = vertices;
+            mesh.Normals = normals;
+            mesh.UV = uvs;
             mesh.SetTriangles(triangles, 0);
+            vertices.Dispose();
+            normals.Dispose();
+            uvs.Dispose();
             triangles.Dispose();
 
             return mesh;
@@ -734,7 +747,7 @@ namespace Unity.HLODSystem
 
 
         /// <remarks>Background thread</remarks>
-        private static List<Vector2Int> GetEdgeList(List<int> tris,
+        private static List<Vector2Int> GetEdgeList(ReadOnlySpan<int> tris,
             HashSet<Vector2Int> candidates, List<Vector2Int> list)
         {
             list.Clear();
@@ -743,12 +756,12 @@ namespace Unity.HLODSystem
         }
 
         /// <remarks>Background thread</remarks>
-        private static HashSet<Vector2Int> GetEdgeList(List<int> tris,
+        private static HashSet<Vector2Int> GetEdgeList(ReadOnlySpan<int> tris,
             HashSet<Vector2Int> candidates)
         {
             candidates.Clear();
 
-            int trisCount = tris.Count / 3;
+            int trisCount = tris.Length / 3;
 
             Span<Vector2Int> edges = stackalloc Vector2Int[3];
 
@@ -887,8 +900,9 @@ namespace Unity.HLODSystem
 
             for (int si = 0; si < source.subMeshCount; ++si)
             {
-                var tris = new List<int>(source.GetTrianglesNative(si));
-                _ = GetEdgeList(tris, candidates);
+                var trisNative = source.GetTrianglesNative(si);
+                var tris = new List<int>(trisNative);
+                _ = GetEdgeList(trisNative.AsReadOnlySpan(), candidates);
                 vertexIndces.Clear();
 
                 foreach (var edge in candidates)
@@ -963,7 +977,7 @@ namespace Unity.HLODSystem
 
             for (int i = 0; i < subMeshTris.Count; ++i)
             {
-                mesh.SetTriangles(subMeshTris[i], i);
+                mesh.SetTriangles(subMeshTris[i].AsReadOnlySpan(), i);
             }
 
             return mesh;
@@ -1067,8 +1081,9 @@ namespace Unity.HLODSystem
             
             for (int si = 0; si < source.subMeshCount; ++si)
             {
-                var tris = new List<int>(source.GetTrianglesNative(si));
-                _ = GetEdgeList(tris, candidates, edgeList);
+                var trisNative = source.GetTrianglesNative(si);
+                var tris = new List<int>(trisNative);
+                _ = GetEdgeList(trisNative.AsReadOnlySpan(), candidates, edgeList);
                 
                 int groupsCount = groups.Count;
                 if (groupsCount > edgeList.Count)
@@ -1202,13 +1217,13 @@ namespace Unity.HLODSystem
 
             for (int i = 0; i < newTris.Count; ++i)
             {
-                mesh.SetTriangles(newTris[i], i);
+                mesh.SetTriangles(newTris[i].AsReadOnlySpan(), i);
             }
 
             return mesh;
         }
 
-        private static DisposableList<HLODBuildInfo> CreateBuildInfo(TerrainData data, SpaceNode root,
+        private static DisposableList<HLODBuildInfo> CreateBuildInfo(SpaceNode root,
             Heightmap m_heightmap, Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers,
             TerrainHLOD m_hlod, DisposableList<HLODBuildInfo> results, Queue<SpaceNode> trevelQueue,
             Queue<int> parentQueue, Queue<string> nameQueue, Queue<int> depthQueue)
@@ -1234,11 +1249,12 @@ namespace Unity.HLODSystem
                 SpaceNode node = trevelQueue.Dequeue();
                 int depth = depthQueue.Dequeue();
                 HLODBuildInfo info = new HLODBuildInfo
-                {
-                    Name = name,
-                    ParentIndex = parentQueue.Dequeue(),
-                    Target = node,
-                };
+                (
+                    name: name,
+                    parentIndex: parentQueue.Dequeue(),
+                    target: node,
+                    heightmap: CreateSubHightmap(node.Bounds, m_size, m_heightmap)
+                );
 
                 for (int i = 0; i < node.GetChildCount(); ++i)
                 {
@@ -1248,7 +1264,6 @@ namespace Unity.HLODSystem
                     depthQueue.Enqueue(depth + 1);
                 }
                 
-                info.Heightmap = CreateSubHightmap(node.Bounds, m_size, m_heightmap);
                 info.WorkingObjects.Add(CreateBakedTerrain(name, node.Bounds, info.Heightmap, depth, node.GetChildCount() == 0, m_size, m_queue, m_alphamaps, m_layers, m_hlod));
                 info.Distances.Add(depth);
                 results.Add(info);
@@ -1339,7 +1354,7 @@ namespace Unity.HLODSystem
 
                         List<SpaceNode> rootNodeList = splitter.CreateSpaceTree(m_hlod.GetBounds(), m_hlod.ChunkSize * 2.0f,
 #if OPTIMISATION
-                        m_hlod.transform, null, progress => { EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Create mesh", progress); });
+                        m_hlod.transform, default(ReadOnlySpan<GameObject>), progress => { EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Create mesh", progress); });
 #else
                         m_hlod.transform, null, progress => { });
 
@@ -1354,7 +1369,7 @@ namespace Unity.HLODSystem
                         var materials = new List<Material>();
                         foreach (var rootNode in rootNodeList)
                         {
-                            using (DisposableList<HLODBuildInfo> buildInfos = CreateBuildInfo(data, rootNode,
+                            using (DisposableList<HLODBuildInfo> buildInfos = CreateBuildInfo(rootNode,
                                 m_heightmap, m_size, m_queue, m_alphamaps, m_layers, m_hlod,
                                 results, trevelQueue, parentQueue, nameQueue, depthQueue))
                             {
@@ -1363,7 +1378,7 @@ namespace Unity.HLODSystem
 
 #if OPTIMISATION
                                 ISimplifier simplifier = (ISimplifier)Activator.CreateInstance(
-                                    m_hlod.SimplifierType,
+                                    m_hlod.SimplifierType!,
                                     m_hlod.SimplifierOptions);
                                 for (int i = 0; i < buildInfos.Count; ++i)
                                 {
@@ -1405,7 +1420,7 @@ namespace Unity.HLODSystem
                                         var vertices = new List<Vector3>();
                                         var normals = new List<Vector3>();
                                         var uvs = new List<Vector2>();
-                                        var vertexIndces = new HashSet<int>();
+                                        var vertexIndices = new HashSet<int>();
                                         var borderVertices = new List<BorderVertex>();
                                         var candidates = new HashSet<Vector2Int>();
                                         var newTris = new List<List<int>>();
@@ -1421,7 +1436,7 @@ namespace Unity.HLODSystem
                                                                         (float)info.Distances[oi]));
                                             using (WorkingMesh m = MakeBorder(o.Mesh, info.Heightmap,
                                                 borderVertexCount, vertices, normals, uvs, subMeshTris,
-                                                vertexIndces, borderVertices, candidates))
+                                                vertexIndices, borderVertices, candidates))
                                             {
                                                 ReampUV(m, info.Heightmap);
                                                 o.SetMesh(MakeFillHoleMesh(m, newTris, edgeList, groups, candidates));

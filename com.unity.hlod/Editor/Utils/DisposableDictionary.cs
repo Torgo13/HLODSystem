@@ -13,6 +13,7 @@ namespace Unity.HLODSystem.Utils
 #else
         private Dictionary<TKey, TValue> m_dic = new Dictionary<TKey, TValue>();
 #endif // BUGFIX
+        // ReSharper disable Unity.PerformanceAnalysis
         public void Dispose()
         {
             foreach (var value in m_dic.Values)

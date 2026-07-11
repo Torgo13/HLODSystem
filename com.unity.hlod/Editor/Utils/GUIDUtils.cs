@@ -25,13 +25,12 @@ namespace Unity.HLODSystem.Utils
         {
             for (int i = 0; i < objectList.Length; ++i)
             {
-                if (objectList[i] == null)
-                    continue;
-                if (objectList[i] is not T)
+                var obj = objectList[i] as T;
+                if (obj == null)
                     continue;
                 
                 if (objectList[i].name == name)
-                    return objectList[i] as T;
+                    return obj;
             }
 
             return null;

@@ -8,7 +8,7 @@ namespace Unity.HLODSystem.Utils
     public class DisposableList<T> : IDisposable, IList<T>, ICollection<T>, IEnumerable<T> 
         where T : IDisposable
     {
-        List<T> m_list = new List<T>();
+        readonly List<T> m_list;
 
         public DisposableList(int capacity = 0)
         {
@@ -24,6 +24,7 @@ namespace Unity.HLODSystem.Utils
                 m_list.Capacity = capacity;
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public void Dispose()
         {
             for (int i = 0; i < m_list.Count; ++i)
@@ -68,14 +69,11 @@ namespace Unity.HLODSystem.Utils
             m_list.CopyTo(array, arrayIndex);
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public bool Remove(T? item)
         {
-            if (item != null)
-            {
-                item.Dispose();
-            }
-
-            return m_list.Remove(item);
+            item?.Dispose();
+            return m_list.Remove(item!);
         }
 
         public int Count
@@ -101,6 +99,7 @@ namespace Unity.HLODSystem.Utils
             m_list.Insert(index, item);
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public void RemoveAt(int index)
         {
             if (m_list[index] != null)

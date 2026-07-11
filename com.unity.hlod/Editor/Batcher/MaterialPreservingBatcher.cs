@@ -39,6 +39,7 @@ namespace Unity.HLODSystem
 
         }
 
+        static
         private void Combine(Transform rootTransform, HLODBuildInfo info)
         {
             var materialTable = UnityEngine.Pool.DictionaryPool<string, WorkingMaterial>.Get();
@@ -52,6 +53,10 @@ namespace Unity.HLODSystem
                 var materials = info.WorkingObjects[i].Materials;
                 for (int m = 0; m < materials.Count; ++m)
                 {
+                    var mesh = info.WorkingObjects[i].Mesh;
+                    if (mesh == null)
+                        continue;
+                    
                     //var mat = materials[m];
                     MeshCombiner.CombineInfo combineInfo = new MeshCombiner.CombineInfo();
 
@@ -59,11 +64,8 @@ namespace Unity.HLODSystem
                     var matrix = hlodWorldToLocal * colliderLocalToWorld;
                     
                     combineInfo.Transform = matrix;
-                    combineInfo.Mesh = info.WorkingObjects[i].Mesh;
+                    combineInfo.Mesh = mesh;
                     combineInfo.MeshIndex = m;
-
-                    if (combineInfo.Mesh == null)
-                        continue;
 
                     if (combineInfos.ContainsKey(materials[m].Identifier) == false)
                     {

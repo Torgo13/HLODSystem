@@ -21,7 +21,8 @@ namespace Unity.HLODSystem.DebugWindow
         }
         #endregion
 
-        private ListView m_hlodItemList;
+        /// <summary>Set in <see cref="OnEnable"/></summary>
+        private ListView m_hlodItemList = null!;
         private List<HLODItem> m_hlodItems = new List<HLODItem>();
         private List<HLODItemData> m_hlodItemDatas = new List<HLODItemData>();
         private HierarchyItem? m_selectedItem;

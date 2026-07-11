@@ -39,6 +39,7 @@ namespace Unity.HLODSystem.Utils
             m_routineStack.Push(routine);
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public bool MoveNext()
         {
             while (m_routineStack.Count > 0)

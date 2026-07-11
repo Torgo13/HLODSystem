@@ -37,6 +37,17 @@ namespace Unity.HLODSystem
                 RemoveDisabled(m_lodGroups);
                 RemoveDisabled(m_meshRenderers);
             }
+            
+            public MeshRendererCalculator(GameObject target)
+            {
+                target.GetComponentsInChildren<HLODMeshSetter>(m_meshSetters);
+                target.GetComponentsInChildren<MeshRenderer>(m_meshRenderers);
+                target.GetComponentsInChildren<LODGroup>(m_lodGroups);
+
+                RemoveDisabled(m_meshSetters);
+                RemoveDisabled(m_lodGroups);
+                RemoveDisabled(m_meshRenderers);
+            }
 
             public void Calculate(float minObjectSize, int level)
             {
@@ -138,6 +149,7 @@ namespace Unity.HLODSystem
             
             //enabled is not Component variable.
             //So we can not make this to Generic function.
+            static
             private void RemoveDisabled(List<HLODMeshSetter> componentList)
             {
                 for (int i = 0; i < componentList.Count; ++i)
@@ -153,6 +165,8 @@ namespace Unity.HLODSystem
                     i -= 1;
                 }
             }
+            
+            static
             private void RemoveDisabled(List<LODGroup> componentList)
             {
                 for (int i = 0; i < componentList.Count; ++i)
@@ -168,6 +182,8 @@ namespace Unity.HLODSystem
                     i -= 1;
                 }
             }
+            
+            static
             private void RemoveDisabled(List<MeshRenderer> componentList)
             {
                 for (int i = 0; i < componentList.Count; ++i)
@@ -193,10 +209,9 @@ namespace Unity.HLODSystem
         
         public static List<MeshRenderer> GetMeshRenderers(GameObject gameObject, float minObjectSize, int level)
         {
-            using var _0 = UnityEngine.Pool.ListPool<GameObject>.Get(out var tmpList);
-            tmpList.Add(gameObject);
-            
-            return GetMeshRenderers(tmpList, minObjectSize, level);
+            MeshRendererCalculator calculator = new MeshRendererCalculator(gameObject);
+            calculator.Calculate(minObjectSize, level);
+            return calculator.ResultMeshRenderers;
         }
 
     }

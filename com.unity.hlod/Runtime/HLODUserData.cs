@@ -37,7 +37,7 @@ namespace Unity.HLODSystem
                 return m_values[index];
             }
 
-            public bool TryGetData(string key, out T value)
+            public bool TryGetData(string key, out T? value)
             {
                 int index = 0;
                 if (m_idTable.TryGetValue(key, out index) == false)

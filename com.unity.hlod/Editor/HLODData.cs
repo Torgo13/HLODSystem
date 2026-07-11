@@ -452,6 +452,12 @@ namespace Unity.HLODSystem
                 set => m_name = value;
             }
 
+            public SerializableCollider(WorkingCollider collider)
+            {
+                From(collider);
+                m_parameters = collider.Parameters;
+            }
+
             public void From(WorkingCollider collider)
             {
                 m_type = collider.Type;
@@ -621,11 +627,16 @@ namespace Unity.HLODSystem
         [SerializeField] private List<SerializableMaterial> m_materials = new List<SerializableMaterial>();
         [SerializeField] private List<SerializableCollider> m_colliders = new List<SerializableCollider>();
 
+        public void AddFromWorkingObjects(string name, IList<WorkingObject> woList)
+            => AddFromWokringObjects(name, woList);
+        
         public void AddFromWokringObjects(string name, IList<WorkingObject> woList)
         {
             for (int i = 0; i < woList.Count; ++i)
             {
                 WorkingObject wo = woList[i];
+                if (wo.Mesh == null)
+                    continue;
                 SerializableObject so = new SerializableObject();
                 so.From(wo);
                 m_objects.Add(so);
@@ -639,8 +650,7 @@ namespace Unity.HLODSystem
             for (int i = 0; i < wcList.Count; ++i)
             {
                 WorkingCollider wc = wcList[i];
-                SerializableCollider sc = new SerializableCollider();
-                sc.From(wc);
+                SerializableCollider sc = new SerializableCollider(wc);
                 sc.Name = name;
                 m_colliders.Add(sc);
             }
@@ -653,7 +663,10 @@ namespace Unity.HLODSystem
                 if (mr == null)
                     return;
 
-                wo.FromRenderer(mr);
+                if (!go.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null)
+                    return;
+
+                wo.FromRenderer(mr, filter.sharedMesh);
                 wo.Name = go.name;
 
                 SerializableObject so = new SerializableObject();

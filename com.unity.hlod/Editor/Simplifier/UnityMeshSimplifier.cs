@@ -71,12 +71,15 @@ namespace Unity.HLODSystem.Simplifier
             int triCount = 0;
             for (int i = 0; i < meshSimplifier.SubMeshCount; ++i)
             {
-                triCount += meshSimplifier.GetSubMeshTriangles(i).Length;
+                var subMeshTriangles = meshSimplifier.GetSubMeshTriangles(i);
+                triCount += subMeshTriangles.Length;
+                subMeshTriangles.Dispose();
             }
 
 #if OPTIMISATION
+            using var vertices = meshSimplifier.VerticesSpan;
             Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent,
-                meshSimplifier.VerticesSpan, meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
+                vertices.AsReadOnlySpan(), meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
                 meshSimplifier.UVSpan, meshSimplifier.UV2Span, meshSimplifier.UV3Span, meshSimplifier.UV4Span,
 #if UNITY_8UV_SUPPORT
                 meshSimplifier.UV5Span, meshSimplifier.UV6Span, meshSimplifier.UV7Span, meshSimplifier.UV8Span,
@@ -105,7 +108,9 @@ namespace Unity.HLODSystem.Simplifier
             nwm.subMeshCount = meshSimplifier.SubMeshCount;
             for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
             {
-                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh), submesh);
+                var subMeshTriangles = meshSimplifier.GetSubMeshTriangles(submesh);
+                nwm.SetTriangles(subMeshTriangles, submesh);
+                subMeshTriangles.Dispose();
             }
 
             if (resultCallback != null)

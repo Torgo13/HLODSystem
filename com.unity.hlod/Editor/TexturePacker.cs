@@ -12,7 +12,7 @@ namespace Unity.HLODSystem
         private NativeArray<int> m_detector = new NativeArray<int>(1, Allocator.Persistent);
         public class MaterialTexture : IDisposable
         {
-            private DisposableList<WorkingTexture> m_textures = new DisposableList<WorkingTexture>();
+            private readonly DisposableList<WorkingTexture> m_textures;
             private NativeArray<int> m_detector = new NativeArray<int>(1, Allocator.Persistent);
 
             public MaterialTexture(int capacity = 0)
@@ -110,6 +110,13 @@ namespace Unity.HLODSystem
             public Source Lhs;
             public Source Rhs;
             public int MatchCount;
+
+            public Score(Source lhs, Source rhs, int matchCount)
+            {
+                Lhs = lhs;
+                Rhs = rhs;
+                MatchCount = matchCount;
+            }
         }
 
         class TextureCombiner : IDisposable
@@ -146,12 +153,12 @@ namespace Unity.HLODSystem
             public static Score GetScore(Source lhs, Source rhs)
             {
                 int match = lhs.m_textureGuids.Intersect(rhs.m_textureGuids).Count();
-                return new Score()
-                {
-                    Lhs = lhs,
-                    Rhs = rhs,
-                    MatchCount = match
-                };
+                return new Score
+                (
+                    lhs: lhs,
+                    rhs: rhs,
+                    matchCount: match
+                );
             }
 
             public static Source Combine(Source lhs, Source rhs)

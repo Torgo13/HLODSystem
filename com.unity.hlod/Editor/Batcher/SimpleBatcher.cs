@@ -153,6 +153,8 @@ namespace Unity.HLODSystem
 
                 m_textureCache.Add(material.Guid, materialTexture);
             }
+            
+            static
             private void ApplyTintColor(WorkingTexture texture, Color tintColor)
             {
                 for (int ty = 0; ty < texture.Height; ++ty)

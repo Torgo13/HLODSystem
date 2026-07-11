@@ -40,11 +40,14 @@ namespace Unity.HLODSystem
                 m_meshRendererList.onAddCallback += OnAddCallback;
                 m_meshRendererList.onRemoveCallback += OnRemoveCallback;
             }
+            
+            static
             private void DrawHeaderCallback(Rect rect)
             {
                 if (styles != null)
                     EditorGUI.LabelField(rect, styles.meshRenderersHeader);
             }
+            
             private void DrawElementCallback(Rect rect, int index, bool isactive, bool isfocused)
             {
                 Rect objectRect = new Rect(rect.x, rect.y, rect.width * 0.6f, rect.height);
@@ -70,14 +73,20 @@ namespace Unity.HLODSystem
                     
                 }
             }
+            
+            static
             private float ElementHeightCallback(int index)
             {
                 return Styles.kSingleLineHeight;
             }
+            
+            static
             private void OnAddCallback(ReorderableList list)
             {
                 ReorderableList.defaultBehaviours.DoAddButton(list);
             }
+            
+            static
             private void OnRemoveCallback(ReorderableList list)
             {
                 ReorderableList.defaultBehaviours.DoRemoveButton(list);
@@ -159,6 +168,7 @@ namespace Unity.HLODSystem
             }
         }
  
+        static
         private void DrawHeaderMeshSetting(Rect rect)
         {
             if (styles != null)

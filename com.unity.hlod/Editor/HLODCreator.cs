@@ -118,12 +118,12 @@ namespace Unity.HLODSystem
 
                 maxLevel = Math.Max(maxLevel, item.Level);
                 candidateItems.Add(item);
-                buildInfoCandidates.Add(new HLODBuildInfo()
-                {
-                    Name = item.Name,
-                    ParentIndex = item.Parent,
-                    Target = item.Node
-                });
+                buildInfoCandidates.Add(new HLODBuildInfo
+                (
+                    name: item.Name,
+                    parentIndex: item.Parent,
+                    target: item.Node
+                ));
                 item.TargetGameObjects.AddRange(item.Node.Objects);
                 item.Distances.AddRange(Enumerable.Repeat<int>(0, item.Node.Objects.Count));
 

@@ -168,8 +168,16 @@ namespace Unity.HLODSystem
         public List<WorkingCollider> Colliders = new List<WorkingCollider>();
         public List<int> Distances = new List<int>();
         
-
+        /// <summary>Set with <see cref="TerrainHLODCreator.CreateSubHightmap"/>.</summary>
         public Heightmap Heightmap;
+
+        public HLODBuildInfo(string name, int parentIndex, SpaceNode target, Heightmap? heightmap = null)
+        {
+            Name = name;
+            ParentIndex = parentIndex;
+            Target = target;
+            Heightmap = heightmap!;
+        }
 
         public void Dispose()
         {

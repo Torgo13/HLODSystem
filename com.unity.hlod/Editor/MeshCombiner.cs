@@ -192,7 +192,7 @@ namespace Unity.HLODSystem
                 if ( colorCount > 0 )
                     FillBuffer(ref colors, mesh.colors, remapper, Color.white);
 
-                FillIndices(ref triangles, mesh.GetTrianglesNative(infos[i].MeshIndex), remapper, startIndex);
+                FillIndices(ref triangles, mesh.GetTrianglesNative(infos[i].MeshIndex).AsReadOnlySpan(), remapper, startIndex);
 
             }
 
@@ -212,11 +212,12 @@ namespace Unity.HLODSystem
 #endif // UNITY_8UV_SUPPORT
             combinedMesh.SetColors(colors);
             
-            combinedMesh.SetTriangles(triangles, 0);
+            combinedMesh.SetTriangles(triangles.AsReadOnlySpan(), 0);
 
             return combinedMesh;
         }
         
+        static
         private void FillBuffer<T>(ref List<T> buffer, T[]? source, Dictionary<int,int> remapper, T defaultValue)
         { 
             int startIndex = buffer.Count;
@@ -237,6 +238,7 @@ namespace Unity.HLODSystem
             }
         }
 
+        static
         private void FillIndices(ref List<int> buffer, System.ReadOnlySpan<int> source, Dictionary<int,int> remapper, int startIndex )
         {
             for (int i = 0; i < source.Length; ++i)

@@ -38,9 +38,12 @@ namespace Unity.HLODSystem.DebugWindow
 
             m_controller = controller;
             m_name = controller.gameObject.name;
-            
-            treeNodeTravelStack.Push(controller.Root);
-            labelStack.Push("");
+
+            if (controller.Root != null)
+            {
+                treeNodeTravelStack.Push(controller.Root);
+                labelStack.Push("");
+            }
 
             while (treeNodeTravelStack.Count > 0)
             {

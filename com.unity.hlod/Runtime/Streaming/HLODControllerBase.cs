@@ -77,7 +77,8 @@ namespace Unity.HLODSystem.Streaming
         #region Method
         class LoadInfo
         {
-            public LoadManager.Handle Handle;
+            /// <summary>Created when <see cref="GetHighObject"/> or <see cref="GetLowObject"/> is called.</summary>
+            public LoadManager.Handle Handle = null!;
             public List<Action<LoadManager.Handle>?> Callbacks = new List<Action<LoadManager.Handle>?>();
 
             public void LoadDone(LoadManager.Handle handle)
@@ -193,7 +194,7 @@ namespace Unity.HLODSystem.Streaming
 
         public bool IsLoadDone()
         {
-            return Root.IsLoadDone();
+            return Root?.IsLoadDone() ?? false;
         }
         public int GetNodeCount()
         {
@@ -304,7 +305,7 @@ namespace Unity.HLODSystem.Streaming
             get { return m_controllerID; }
         }
 
-        public HLODTreeNode Root
+        public HLODTreeNode? Root
         {
             set
             {

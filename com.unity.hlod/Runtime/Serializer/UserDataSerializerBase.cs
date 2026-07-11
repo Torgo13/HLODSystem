@@ -69,6 +69,7 @@ namespace Unity.HLODSystem.Serializer
             }
         }
 
+        static
         private int EncodeID(int controllerID, int id)
         {
             return (controllerID & 0xff) << 24 | id;

@@ -150,7 +150,11 @@ namespace Unity.HLODSystem.Streaming
             if (m_highObjects[id].GameObject != null)
             {
                 var gameObject = m_highObjects[id].GameObject!;
+#if UNITY_6000_3_OR_NEWER
+                ChangeLayersRecursively(gameObject, m_hlodLayerIndex);
+#else
                 ChangeLayersRecursively(gameObject.transform, m_hlodLayerIndex);
+#endif // UNITY_6000_3_OR_NEWER
                 loadDoneCallback?.Invoke(gameObject);
             }
             else
@@ -222,6 +226,7 @@ namespace Unity.HLODSystem.Streaming
 #endif // ZERO
         }
 
+        static
         private void DestoryObject(Object? obj)
         {
 #if SAFETY
@@ -295,7 +300,7 @@ namespace Unity.HLODSystem.Streaming
                     t.SetLocalPositionAndRotation(localPosition, localRotation);
                     t.localScale = localScale;
                     gameObject.SetActive(false);
-                    ChangeLayersRecursively(t, m_hlodLayerIndex);
+                    ChangeLayersRecursively(gameObject, m_hlodLayerIndex);
 
                     loadInfo.Instance = gameObject;
                     foreach (var callback in callbacks)
@@ -330,9 +335,9 @@ namespace Unity.HLODSystem.Streaming
             if (ct.IsCancellationRequested || handle.Status != AsyncOperationStatus.Succeeded)
                 return;
 
-            GameObject handleResult = handle.Result;
-            handleResult.SetActive(false);
-            var aio = InstantiateAsync(handleResult, new InstantiateParameters
+            GameObject gameObject = handle.Result;
+            gameObject.SetActive(false);
+            var aio = InstantiateAsync(gameObject, new InstantiateParameters
                 { parent = parent, worldSpace = false, originalImmutable = true, });
             while (!ct.IsCancellationRequested && !aio.isDone)
             {
@@ -347,11 +352,11 @@ namespace Unity.HLODSystem.Streaming
             if (ct.IsCancellationRequested || result == null || result.Length == 0 || result[0] == null)
                 return;
 
-            GameObject gameObject = result[0];
-            var t = gameObject.transform;
-            t.SetLocalPositionAndRotation(localPosition, localRotation);
-            t.localScale = localScale;
-            ChangeLayersRecursively(t, m_hlodLayerIndex);
+            gameObject = result[0];
+            var transformHandle = gameObject.transformHandle;
+            transformHandle.SetLocalPositionAndRotation(localPosition, localRotation);
+            transformHandle.localScale = localScale;
+            ChangeLayersRecursively(gameObject, m_hlodLayerIndex);
 
             loadInfo.Instance = gameObject;
             foreach (var callback in callbacks)
@@ -373,6 +378,19 @@ namespace Unity.HLODSystem.Streaming
             }
         }
 
+#if UNITY_6000_3_OR_NEWER
+        static void ChangeLayersRecursively(GameObject go, int layer)
+        {
+            var list = UnityEngine.Pool.ListPool<Transform>.Get();
+            go.GetComponentsInChildren(includeInactive: true, list);
+            foreach (Transform child in list)
+            {
+                child.gameObject.layer = layer;
+            }
+            
+            UnityEngine.Pool.ListPool<Transform>.Release(list);
+        }
+#else
         static void ChangeLayersRecursively(Transform trans, int layer)
         {
             trans.gameObject.layer = layer;
@@ -381,5 +399,6 @@ namespace Unity.HLODSystem.Streaming
                 ChangeLayersRecursively(child, layer);
             }
         }
+#endif // UNITY_6000_3_OR_NEWER
     }
 }

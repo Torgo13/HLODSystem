@@ -64,9 +64,8 @@ namespace Unity.HLODSystem.SpaceManager
             if (m_useSubHLODTree == false)
                 return 1;
             
-            using var _0 = UnityEngine.Pool.ListPool<Bounds>.Get(out var splittedBounds);
-            _ = SplitBounds(bounds, m_subHLODTreeSize, splittedBounds);
-            return splittedBounds.Count;
+            using var splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
+            return splittedBounds.Length;
         }
 
         public int CalculateTreeDepth(Bounds bounds, float chunkSize)
@@ -74,9 +73,8 @@ namespace Unity.HLODSystem.SpaceManager
             float maxLength = 0.0f;
             if (m_useSubHLODTree)
             {
-                using var _0 = UnityEngine.Pool.ListPool<Bounds>.Get(out var splittedBounds);
-                _ = SplitBounds(bounds, m_subHLODTreeSize, splittedBounds);
-                if (splittedBounds.Count > 0)
+                using var splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
+                if (splittedBounds.Length > 0)
                 {
                     maxLength = Mathf.Max(splittedBounds[0].extents.x, splittedBounds[0].extents.z);
                 }
@@ -100,27 +98,30 @@ namespace Unity.HLODSystem.SpaceManager
 
             return depth;
         }
+        
+        public List<SpaceNode> CreateSpaceTree(Bounds initBounds, float chunkSize, Transform transform,
+            List<GameObject> targetObjects, Action<float>? onProgress)
+            => CreateSpaceTree(initBounds, chunkSize, transform, targetObjects.AsReadOnlySpan(), onProgress);
 
         public List<SpaceNode> CreateSpaceTree(Bounds initBounds, float chunkSize, Transform transform,
-            List<GameObject>? targetObjects, Action<float>? onProgress)
+            ReadOnlySpan<GameObject> targetObjects, Action<float>? onProgress)
         {
             using var _0 = UnityEngine.Pool.ListPool<TargetInfo>.Get(out var targetInfos);
+            var targetInfosSpan = CreateTargetInfoList(targetObjects, transform, targetInfos).AsReadOnlySpan();
             List<SpaceNode> nodes;
-            _ = CreateTargetInfoList(targetObjects, transform, targetInfos);
 
             if (m_useSubHLODTree == true)
             {
-                using var _1 = UnityEngine.Pool.ListPool<Bounds>.Get(out var splittedBounds);
-                _ = SplitBounds(initBounds, m_subHLODTreeSize, splittedBounds);
-                using var _2 = UnityEngine.Pool.ListPool<List<TargetInfo>>.Get(out var splittedTargetInfos);
-                _ = SplitTargetObjects(targetInfos, splittedBounds, splittedTargetInfos);
+                using var splittedBounds = SplitBounds(initBounds, m_subHLODTreeSize);
+                using var _1 = UnityEngine.Pool.ListPool<List<TargetInfo>>.Get(out var splittedTargetInfos);
+                _ = SplitTargetObjects(targetInfosSpan, splittedBounds, splittedTargetInfos);
 
                 nodes = new List<SpaceNode>(splittedTargetInfos.Count);
                 float progressSize = 1.0f / splittedTargetInfos.Count; 
                 for (int i = 0; i < splittedTargetInfos.Count; ++i)
                 {
                     int i1 = i;
-                    nodes.Add(CreateSpaceTreeImpl(splittedBounds[i], chunkSize, splittedTargetInfos[i], (p =>
+                    nodes.Add(CreateSpaceTreeImpl(splittedBounds[i], chunkSize, splittedTargetInfos[i].AsReadOnlySpan(), (p =>
                     {
                         float startProgress = i1 * progressSize;
                         onProgress?.Invoke(startProgress + p * progressSize);
@@ -130,12 +131,12 @@ namespace Unity.HLODSystem.SpaceManager
             else
             {
                 nodes = new List<SpaceNode>();
-                nodes.Add(CreateSpaceTreeImpl(initBounds, chunkSize, targetInfos, onProgress));
+                nodes.Add(CreateSpaceTreeImpl(initBounds, chunkSize, targetInfosSpan, onProgress));
             }
 
             return nodes;
         }
-        private SpaceNode CreateSpaceTreeImpl(Bounds initBounds, float chunkSize, List<TargetInfo> targetObjects, Action<float>? onProgress)
+        private SpaceNode CreateSpaceTreeImpl(Bounds initBounds, float chunkSize, ReadOnlySpan<TargetInfo> targetObjects, Action<float>? onProgress)
         {
             float looseSize = CalcLooseSize(chunkSize);
             SpaceNode rootNode = new SpaceNode();
@@ -169,7 +170,7 @@ namespace Unity.HLODSystem.SpaceManager
             if (targetObjects == null)
                 return rootNode;
 
-            for (int oi = 0; oi < targetObjects.Count; ++oi)
+            for (int oi = 0; oi < targetObjects.Length; ++oi)
             {
                 Bounds objectBounds = targetObjects[oi].Bounds;
                 SpaceNode target = rootNode;
@@ -211,7 +212,7 @@ namespace Unity.HLODSystem.SpaceManager
                 }        
                 
                 if ( onProgress != null)
-                    onProgress((float)oi/ (float)targetObjects.Count);
+                    onProgress((float)oi/ (float)targetObjects.Length);
             }
             
             return rootNode;
@@ -223,7 +224,7 @@ namespace Unity.HLODSystem.SpaceManager
             public Bounds Bounds;
         }
 
-        private List<TargetInfo> CreateTargetInfoList(List<GameObject>? gameObjects, Transform transform,
+        private static List<TargetInfo> CreateTargetInfoList(ReadOnlySpan<GameObject> gameObjects, Transform transform,
             List<TargetInfo> targetInfos)
         {
 #if BUGFIX
@@ -231,41 +232,40 @@ namespace Unity.HLODSystem.SpaceManager
                 return targetInfos;
 #endif // BUGFIX
 
-            var renderers = new List<MeshRenderer>();
-            for (int i = 0; i < gameObjects.Count; ++i)
+            using var _0 = UnityEngine.Pool.ListPool<MeshRenderer>.Get(out var renderers);
+            for (int i = 0; i < gameObjects.Length; ++i)
             {
-                Bounds? bounds = CalculateBounds(gameObjects[i], transform, renderers);
-                if ( bounds == null )
+                if (!CalculateBounds(gameObjects[i], transform, renderers, out Bounds bounds))
                     continue;
                 targetInfos.Add(new TargetInfo()
                 {
                     GameObject = gameObjects[i],
-                    Bounds = bounds.Value,
+                    Bounds = bounds,
                 });
             }
 
             return targetInfos;
         }
-
-        private Bounds? CalculateBounds(GameObject obj, Transform transform,
-            List<MeshRenderer> renderers)
+        
+        private static bool CalculateBounds(GameObject obj, Transform transform,
+            List<MeshRenderer> renderers, out Bounds result)
         {
+            result = default;
             renderers.Clear();
             obj.GetComponentsInChildren<MeshRenderer>(renderers);
             if (renderers.Count == 0)
-                return null;
+                return false;
 
-            Bounds result = Utils.BoundsUtils.CalcLocalBounds(renderers[0], transform);
+            result = Utils.BoundsUtils.CalcLocalBounds(renderers[0], transform);
             for (int i = 1; i < renderers.Count; ++i)
             {
                 result.Encapsulate(Utils.BoundsUtils.CalcLocalBounds(renderers[i], transform));
             }
 
-            return result;
+            return true;
         }
 
-        private static List<Bounds> SplitBounds(Bounds bounds, float splitSize,
-            List<Bounds> boundsList)
+        private static Unity.Collections.NativeArray<Bounds> SplitBounds(Bounds bounds, float splitSize)
         {
             var boundsSize = bounds.size;
             int xcount = Mathf.CeilToInt(boundsSize.x / splitSize);
@@ -278,9 +278,9 @@ namespace Unity.HLODSystem.SpaceManager
 
             var boundsExtentsY = bounds.extents.y;
             var boundsMin = bounds.min;
-            if (boundsList.Capacity < xcount * zcount)
-                boundsList.Capacity = xcount * zcount;
-
+            var boundsList = new Unity.Collections.NativeArray<Bounds>(xcount * zcount,
+                Unity.Collections.Allocator.Temp,
+                Unity.Collections.NativeArrayOptions.UninitializedMemory);
             for (int z = 0; z < zcount; ++z)
             {
                 for (int x = 0; x < xcount; ++x)
@@ -290,24 +290,24 @@ namespace Unity.HLODSystem.SpaceManager
                         boundsExtentsY,
                         z * zsize + zsize * 0.5f) + boundsMin;
                     
-                    boundsList.Add(new Bounds(center,splitBoundSize));
+                    boundsList[x + xcount * z] = new Bounds(center, splitBoundSize);
                 }
             }
 
             return boundsList;
         }
 
-        private static List<List<TargetInfo>> SplitTargetObjects(List<TargetInfo> targetInfoList, List<Bounds> targetBoundList,
+        private static List<List<TargetInfo>> SplitTargetObjects(ReadOnlySpan<TargetInfo> targetInfoList, ReadOnlySpan<Bounds> targetBoundList,
             List<List<TargetInfo>> targetObjectsList)
         {
-            for (int i = 0; i < targetBoundList.Count; ++i)
+            for (int i = 0; i < targetBoundList.Length; ++i)
             {
                 targetObjectsList.Add(new List<TargetInfo>());
             }
 
             foreach (var targetInfo in targetInfoList)
             {
-                for (int bi = 0; bi < targetBoundList.Count; ++bi)
+                for (int bi = 0; bi < targetBoundList.Length; ++bi)
                 {
                     if (targetBoundList[bi].Contains(targetInfo.Bounds.center))
                     {

@@ -22,7 +22,7 @@ namespace Unity.HLODSystem
             [SerializeField]
             public string Name = string.Empty;
             [SerializeField]
-            public T Data;
+            public T? Data;
 
 
             public void SetName(string name)
@@ -41,7 +41,7 @@ namespace Unity.HLODSystem
             }
             public object GetData()
             {
-                return Data;
+                return Data!;
             }
         }
 

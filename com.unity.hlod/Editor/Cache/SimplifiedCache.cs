@@ -175,13 +175,14 @@ namespace Unity.HLODSystem.Cache
             return AssetDatabase.LoadAssetAtPath<SimplifiedMeshList>(path);
         }
 
+        static
         private void RemoveMeshList(string guid)
         {
             string path = GetAssetPath(guid);
             AssetDatabase.DeleteAsset(path);
         }
 
-       
+        static
         private string GetAssetPath(string guid)
         {
             return k_CachePath + guid + ".asset";

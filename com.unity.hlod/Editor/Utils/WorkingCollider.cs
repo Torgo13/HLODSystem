@@ -7,6 +7,7 @@ namespace Unity.HLODSystem.Utils
 {
     public static class ColliderExtension
     {
+        // ReSharper disable Unity.PerformanceAnalysis
         public static WorkingCollider ToWorkingCollider(this Collider collider, HLOD hlod)
         {
             var hlodWorldToLocal = hlod.transform.worldToLocalMatrix;

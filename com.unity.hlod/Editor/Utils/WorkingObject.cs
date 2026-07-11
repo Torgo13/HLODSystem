@@ -62,17 +62,25 @@ namespace Unity.HLODSystem.Utils
             m_localToWorld = Matrix4x4.identity;
             m_lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.BlendProbes;
         }
-
-        public void FromRenderer(MeshRenderer renderer)
+        
+        public void FromRenderer(MeshRenderer renderer,
+            Mesh? filterSharedMesh = null)
         {
             //clean old data
             m_mesh?.Dispose();
             m_materials.Dispose();
-            
-            MeshFilter filter = renderer.GetComponent<MeshFilter>();
-            if (filter != null && filter.sharedMesh != null)
+
+            if (filterSharedMesh != null)
             {
-                m_mesh = filter.sharedMesh.ToWorkingMesh(m_allocator);
+                m_mesh = filterSharedMesh.ToWorkingMesh(m_allocator);
+            }
+            else if (renderer.TryGetComponent(out MeshFilter filter))
+            {
+                filterSharedMesh = filter.sharedMesh;
+                if (filterSharedMesh != null)
+                {
+                    m_mesh = filterSharedMesh.ToWorkingMesh(m_allocator);
+                }
             }
 
             using var _0 = UnityEngine.Pool.ListPool<Material>.Get(out var sharedMaterials);

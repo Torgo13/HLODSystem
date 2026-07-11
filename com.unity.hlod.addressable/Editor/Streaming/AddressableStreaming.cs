@@ -570,6 +570,7 @@ namespace Unity.HLODSystem.Streaming
             settings.SetDirty(AddressableAssetSettings.ModificationEvent.EntryMoved, entriesAdded, true);
         }
 
+        static
         private string GetAddress(Object obj)
         {
             if (AddressableAssetSettingsDefaultObject.Settings == null)
@@ -604,6 +605,7 @@ namespace Unity.HLODSystem.Streaming
             return string.Empty;
         }
 
+        static
         private string GetAssetPath(Object obj)
         {
             string path = AssetDatabase.GetAssetPath(obj);
@@ -617,6 +619,7 @@ namespace Unity.HLODSystem.Streaming
             return path;
         }
 
+        static
         private bool IsExistsInAddressables(string guid)
         {
             var settings = AddressableAssetSettingsDefaultObject.GetSettings(false);
@@ -637,6 +640,7 @@ namespace Unity.HLODSystem.Streaming
             return false;
         }
 
+        static
         private AddressableAssetGroup GetGroup(AddressableAssetSettings settings, string groupName)
         {
             for (int i = 0; i < settings.groups.Count; ++i)

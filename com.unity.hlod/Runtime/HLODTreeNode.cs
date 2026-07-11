@@ -55,6 +55,7 @@ namespace Unity.HLODSystem
             get { return m_lowObjectIds; }
         }
 
+        public State ExpectedState => m_expectedState;
         public State ExprectedState
         {
             get { return m_expectedState; }

@@ -165,7 +165,7 @@ namespace Unity.HLODSystem.Utils
 
         public static void CopyValues<T>(T source, T target)
         {
-            System.Type type = source.GetType();
+            System.Type type = source!.GetType();
             FieldInfo[] fields = type.GetFields(BindingFlags.Instance);
             foreach (FieldInfo field in fields)
             {

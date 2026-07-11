@@ -149,6 +149,7 @@ namespace Unity.HLODSystem.Utils
                 return m_working;
             }
 
+            // ReSharper disable Unity.PerformanceAnalysis
             private void Run()
             {
                 while (m_terminated == false)

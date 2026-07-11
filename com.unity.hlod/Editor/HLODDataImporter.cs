@@ -199,6 +199,7 @@ namespace Unity.HLODSystem
             }
         }
 
+        static
         private TextureFormat GetCompressFormat(HLODData data, BuildTargetGroup group)
         {
             if (group == BuildTargetGroup.Android)
@@ -212,6 +213,7 @@ namespace Unity.HLODSystem
             return data.CompressionData.PCTextureFormat;
         }
 
+        static
         private void UpdateProgress(string filename, int current, int max)
         {
             float pos = (float) current / (float) max;

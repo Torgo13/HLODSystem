@@ -95,6 +95,7 @@ namespace Unity.HLODSystem
             ApplyRevertGUI();
         }
 
+        static
         private string FormattingSize(long length)
         {
             //gb
