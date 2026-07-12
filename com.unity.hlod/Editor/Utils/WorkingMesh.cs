@@ -787,7 +787,10 @@ namespace Unity.HLODSystem.Utils
             set
             {
                 if (string.IsNullOrEmpty(value))
-                    value = string.Empty;
+                {
+                    m_Name.Clear();
+                    return;
+                }
 
                 var bytes = new NativeArray<byte>(Encoding.UTF8.GetByteCount(value),
                     Allocator.TempJob, NativeArrayOptions.UninitializedMemory);

@@ -663,10 +663,14 @@ namespace Unity.HLODSystem
                 if (mr == null)
                     return;
 
-                if (!go.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null)
+                if (!go.TryGetComponent(out MeshFilter filter))
                     return;
 
-                wo.FromRenderer(mr, filter.sharedMesh);
+                var sharedMesh = filter.sharedMesh;
+                if (sharedMesh == null)
+                    return;
+
+                wo.FromRenderer(mr, sharedMesh);
                 wo.Name = go.name;
 
                 SerializableObject so = new SerializableObject();

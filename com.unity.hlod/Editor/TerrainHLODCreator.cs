@@ -261,8 +261,8 @@ namespace Unity.HLODSystem
                 float u = (wx + m_offset.x) / m_size.x;
                 float v = (wz + m_offset.y) / m_size.y;
 
-                float mipx = Mathf.Max(0, sx / m_chunkSize);
-                float mipy = Mathf.Max(0, sz / m_chunkSize);
+                float mipx = Mathf.Max(0, sx / (m_chunkSize * 2.0f) - 1);
+                float mipy = Mathf.Max(0, sz / (m_chunkSize * 2.0f) - 1);
 
                 float mip = Mathf.Max(mipx, mipy);
 
@@ -274,7 +274,7 @@ namespace Unity.HLODSystem
             {
                 Vector3 uv = GetUVByWorld(wx, wz, sx, sz);
 
-                return GetColor(uv.x, uv.y, Mathf.CeilToInt(uv.z));
+                return GetColor(uv.x, uv.y, Mathf.RoundToInt(uv.z));
             }
 
             /// <remarks>Background thread</remarks>
@@ -283,7 +283,9 @@ namespace Unity.HLODSystem
                 u = u - Mathf.Floor(u);
                 v = v - Mathf.Floor(v);
 
-                mipLevel = Mathf.Min(mipLevel, m_diffuseTextures.Count - 1);
+                mipLevel = Mathf.Min(mipLevel, m_maskTextures.Count - 1);
+                if (mipLevel < 0)
+                    return default;
 
                 return m_maskTextures[mipLevel].GetPixel(u, v);
             }
@@ -293,7 +295,7 @@ namespace Unity.HLODSystem
             {
                 Vector3 uv = GetUVByWorld(wx, wz, sx, sz);
 
-                return GetMask(uv.x, uv.y, Mathf.CeilToInt(uv.z));
+                return GetMask(uv.x, uv.y, Mathf.RoundToInt(uv.z));
             }
 
             /// <remarks>Background thread</remarks>
@@ -303,6 +305,8 @@ namespace Unity.HLODSystem
                 v = v - Mathf.Floor(v);
 
                 mipLevel = Mathf.Min(mipLevel, m_normalTextures.Count - 1);
+                if (mipLevel < 0)
+                    return new Color(0.5f, 0.5f, 1f);
 
                 return m_normalTextures[mipLevel].GetPixel(u, v);
             }
@@ -312,7 +316,7 @@ namespace Unity.HLODSystem
             {
                 Vector3 uv = GetUVByWorld(wx, wz, sx, sz);
 
-                return GetNormal(uv.x, uv.y, Mathf.CeilToInt(uv.z));
+                return GetNormal(uv.x, uv.y, Mathf.RoundToInt(uv.z));
             }
 
 #if UNUSED
@@ -465,7 +469,7 @@ namespace Unity.HLODSystem
 
             mesh.name = name + "_Mesh";
 
-            const Allocator allocator = Allocator.TempJob;
+            const Allocator allocator = Allocator.Persistent;
             const NativeArrayOptions options = NativeArrayOptions.UninitializedMemory;
 #if USING_COLLECTIONS
             var vertices = mesh.VerticesList;
@@ -497,10 +501,13 @@ namespace Unity.HLODSystem
                 {
                     int index = vi++;
 
+                    Vector3 boundsSize = bounds.size;
+                    Vector3 boundsMin = bounds.min;
+
                     Vector3 vertex;
-                    vertex.x = bounds.size.x * (x) / (heightmap.Width - 1) + bounds.min.x;
+                    vertex.x = boundsSize.x * (x) / (heightmap.Width - 1) + boundsMin.x;
                     vertex.y = heightmap.Size.y * heightmap[z, x];
-                    vertex.z = bounds.size.z * (z) / (heightmap.Height - 1) + bounds.min.z;
+                    vertex.z = boundsSize.z * (z) / (heightmap.Height - 1) + boundsMin.z;
                     vertices[index] = vertex;
 
                     Vector2 uv;
@@ -1431,16 +1438,17 @@ namespace Unity.HLODSystem
                                     HLODBuildInfo info = buildInfos[i];
                                     m_queue.EnqueueJob(() =>
                                     {
-                                        var vertices = new List<Vector3>();
-                                        var normals = new List<Vector3>();
-                                        var uvs = new List<Vector2>();
-                                        var vertexIndices = new HashSet<int>();
-                                        var borderVertices = new List<BorderVertex>();
-                                        var candidates = new HashSet<Vector2Int>();
-                                        var newTris = new List<List<int>>();
-                                        var edgeList = new List<Vector2Int>();
-                                        var groups = new List<EdgeGroup>();
-                                        var subMeshTris = new List<List<int>>();
+                                        const int capacity = 64;
+                                        var vertices = new List<Vector3>(capacity);
+                                        var normals = new List<Vector3>(capacity);
+                                        var uvs = new List<Vector2>(capacity);
+                                        var vertexIndices = new HashSet<int>(capacity);
+                                        var borderVertices = new List<BorderVertex>(capacity);
+                                        var candidates = new HashSet<Vector2Int>(capacity);
+                                        var newTris = new List<List<int>>(capacity);
+                                        var edgeList = new List<Vector2Int>(capacity);
+                                        var groups = new List<EdgeGroup>(capacity);
+                                        var subMeshTris = new List<List<int>>(capacity);
 
                                         for (int oi = 0; oi < info.WorkingObjects.Count; ++oi)
                                         {
@@ -1473,14 +1481,19 @@ namespace Unity.HLODSystem
                                     if (node.HasChild() == false)
                                     {
                                         SpaceNode? parent = node.ParentNode;
+                                        if (parent == null)
+                                            continue;
                                         node.ParentNode = null;
 
                                         GameObject go = new GameObject(buildInfos[i].Name);
 
                                         for (int wi = 0; wi < info.WorkingObjects.Count; ++wi)
                                         {
-                                            string matName;
                                             WorkingObject wo = info.WorkingObjects[wi];
+                                            if (wo.Mesh == null)
+                                                continue;
+                                            
+                                            string matName;
                                             GameObject targetGO;
                                             if (wi == 0)
                                             {
@@ -1522,8 +1535,7 @@ namespace Unity.HLODSystem
                                                 materials.Add(mat);
                                             }
 
-                                            if (wo.Mesh != null)
-                                                targetGO.AddComponent<MeshFilter>().sharedMesh = wo.Mesh.ToMesh();
+                                            targetGO.AddComponent<MeshFilter>().sharedMesh = wo.Mesh.ToMesh();
 
                                             var mr = targetGO.AddComponent<MeshRenderer>();
                                             mr.SetSharedMaterials(materials);
@@ -1533,7 +1545,7 @@ namespace Unity.HLODSystem
                                         go.transform.SetParent(m_hlod.transform, false);
                                         m_hlod.AddGeneratedResource(go);
 
-                                        parent?.Objects.Add(go);
+                                        parent.Objects.Add(go);
                                         buildInfos.RemoveAt(i);
                                         i -= 1;
                                     }

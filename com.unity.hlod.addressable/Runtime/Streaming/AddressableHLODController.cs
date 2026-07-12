@@ -229,11 +229,6 @@ namespace Unity.HLODSystem.Streaming
         static
         private void DestoryObject(Object? obj)
         {
-#if SAFETY
-            if (obj == null)
-                return;
-#endif // SAFETY
-
 #if UNITY_EDITOR
             if (!Application.isPlaying)
                 DestroyImmediate(obj);

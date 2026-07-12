@@ -212,7 +212,7 @@ namespace Unity.HLODSystem.Streaming
 
         private void ExtractMaterial(HLODData hlodData, string filenamePrefix)
         {
-            Dictionary<string, HLODData.SerializableMaterial> extractedMaterials = new Dictionary<string, HLODData.SerializableMaterial>();
+            using var _0 = UnityEngine.Pool.DictionaryPool<string, HLODData.SerializableMaterial>.Get(out var extractedMaterials);
             //save files to disk
             foreach (var hlodMaterial in hlodData.GetMaterials())
             {
@@ -267,10 +267,10 @@ namespace Unity.HLODSystem.Streaming
             var materials = hlodData.GetMaterials();
             for (int i = 0; i < materials.Count; ++i)
             {
-                if (extractedMaterials.ContainsKey(materials[i].ID) == false)
-                    continue;
-
-                materials[i] = extractedMaterials[materials[i].ID];
+                if (extractedMaterials.TryGetValue(materials[i].ID, out var extractedMaterial))
+                {
+                    materials[i] = extractedMaterial;
+                }
             }
 
             var objects = hlodData.GetObjects();
@@ -280,10 +280,10 @@ namespace Unity.HLODSystem.Streaming
 
                 for (int mi = 0; mi < matIds.Count; ++mi)
                 {
-                    if (extractedMaterials.ContainsKey(matIds[mi]) == false)
-                        continue;
-
-                    matIds[mi] = extractedMaterials[matIds[mi]].ID;
+                    if (extractedMaterials.TryGetValue(matIds[mi], out var extractedMaterial))
+                    {
+                        matIds[mi] = extractedMaterial.ID;
+                    }
                 }
             }
         }

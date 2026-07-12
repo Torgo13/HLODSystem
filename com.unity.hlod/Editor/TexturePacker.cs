@@ -470,10 +470,13 @@ namespace Unity.HLODSystem
                 for (int i = 0; i < m_sources.Count; ++i)
                 {
                     int maxCount = m_sources[i].GetMaxTextureCount(packTextureSize, maxSourceSize);
-                    if (taskGroups.ContainsKey(maxCount) == false)
-                        taskGroups.Add(maxCount, new TaskGroup(format, packTextureSize, linear, maxCount));
+                    if (!taskGroups.TryGetValue(maxCount, out TaskGroup taskGroup))
+                    {
+                        taskGroup = new TaskGroup(format, packTextureSize, linear, maxCount);
+                        taskGroups.Add(maxCount, taskGroup);
+                    }
 
-                    taskGroups[maxCount].AddSource(m_sources[i]);
+                    taskGroup.AddSource(m_sources[i]);
                 }
 
                 var scoreList = UnityEngine.Pool.ListPool<Score>.Get();
