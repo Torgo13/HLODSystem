@@ -40,7 +40,7 @@ namespace Unity.HLODSystem
                     rootData.name = "Root";
 
                     var serializableMaterials = data.GetMaterials();
-                    using var _0 = UnityEngine.Pool.DictionaryPool<string, Material>.Get(out var loadedMaterials);
+                    var loadedMaterials = new Dictionary<string, Material>();
                     if (serializableMaterials != null)
                     {
                         for (int mi = 0; mi < serializableMaterials.Count; ++mi)
@@ -76,9 +76,9 @@ namespace Unity.HLODSystem
 
                     var serializableObjects = data.GetObjects();
                     var serializableColliders = data.GetColliders();
-                    using var _1 = UnityEngine.Pool.DictionaryPool<string, List<GameObject>>.Get(out var createdGameObjects);
-                    using var _2 = UnityEngine.Pool.DictionaryPool<string, GameObject>.Get(out var createdColliders);
-                    using var _3 = UnityEngine.Pool.ListPool<Material?>.Get(out var materials);
+                    var createdGameObjects = new Dictionary<string, List<GameObject>>();
+                    var createdColliders = new Dictionary<string, GameObject>();
+                    var materials = new List<Material?>();
 
                     if (serializableObjects != null)
                     {

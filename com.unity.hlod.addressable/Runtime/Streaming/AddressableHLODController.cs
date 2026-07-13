@@ -185,8 +185,9 @@ namespace Unity.HLODSystem.Streaming
         {
             if (string.IsNullOrEmpty(m_highObjects[id].Address) == true)
             {
-                if (m_highObjects[id].GameObject != null)
-                    m_highObjects[id].GameObject!.SetActive(false);
+                var go = m_highObjects[id].GameObject;
+                if (go != null)
+                    go.SetActive(false);
             }
             else
             {

@@ -12,7 +12,11 @@ namespace Unity.HLODSystem.Utils
         public static WorkingMesh ToWorkingMesh(this Mesh mesh, Allocator allocator)
         {
             var bindposes = mesh.GetBindposes().AsReadOnlySpan();
+#if OPTIMISATION
+            var wm = new WorkingMesh(allocator);
+#else
             var wm = new WorkingMesh(allocator, mesh.vertexCount, mesh.triangles.Length, mesh.subMeshCount, bindposes.Length);
+#endif // OPTIMISATION
             mesh.ApplyToWorkingMesh(ref wm, bindposes);
             return wm;
         }
@@ -23,7 +27,7 @@ namespace Unity.HLODSystem.Utils
             ReadOnlySpan<Matrix4x4> bindposes)
         {
             wm.indexFormat = mesh.indexFormat;
-#if OPTIMISATION
+#if !OPTIMISATION
             var vertices = UnityEngine.Pool.ListPool<Vector3>.Get();
             var normals = UnityEngine.Pool.ListPool<Vector3>.Get();
             var tangents = UnityEngine.Pool.ListPool<Vector4>.Get();
@@ -92,7 +96,7 @@ namespace Unity.HLODSystem.Utils
             wm.boneWeights = mesh.boneWeights;
 #endif // OPTIMISATION
             wm.subMeshCount = mesh.subMeshCount;
-            using var _0 = UnityEngine.Pool.ListPool<int>.Get(out var triangles);
+            var triangles = new System.Collections.Generic.List<int>();
             for (int i = 0; i < mesh.subMeshCount; i++)
             {
                 triangles.Clear();
@@ -224,17 +228,17 @@ namespace Unity.HLODSystem.Utils
         /// <remarks>Background thread</remarks>
         public NativeArray<int> GetTrianglesNative(int submesh)
         {
+            int start = 0;
+            int length = 0;
+            
             if (submesh < m_SubmeshOffset.Length)
             {
-                var start = 0;
                 var stop = 0;
                 GetTriangleRange(submesh, out start, out stop);
-                var length = stop - start;
-
-                return m_Triangles.AsArray().GetSubArray(start, length);
+                length = stop - start;
             }
 
-            return new NativeArray<int>(0, Allocator.Temp);
+            return m_Triangles.AsArray().GetSubArray(start, length);
         }
 
         /// <remarks>Background thread</remarks>
@@ -793,7 +797,7 @@ namespace Unity.HLODSystem.Utils
                 }
 
                 var bytes = new NativeArray<byte>(Encoding.UTF8.GetByteCount(value),
-                    Allocator.TempJob, NativeArrayOptions.UninitializedMemory);
+                    Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
                 Encoding.UTF8.GetBytes(value, bytes);
                 m_Name.Clear();
                 m_Name.AddRange(bytes);
@@ -1092,7 +1096,7 @@ namespace Unity.HLODSystem.Utils
                 return m_Triangles.GetSubArray(start, length);
             }
 
-            return new NativeArray<int>(0, Allocator.Temp);
+            return m_Triangles.GetSubArray(0, 0);
         }
 
         /// <remarks>Background thread</remarks>
@@ -1757,7 +1761,7 @@ namespace Unity.HLODSystem.Utils
         }
 
         /// <remarks>Background thread</remarks>
-        public WorkingMesh(Allocator allocator, int maxVertices, int maxTriangles, int maxSubmeshes, int maxBindposes) 
+        public WorkingMesh(Allocator allocator, int maxVertices = 0, int maxTriangles = 0, int maxSubmeshes = 0, int maxBindposes = 0) 
         {
 #if USING_COLLECTIONS // Does not require m_Counts
             var allocatorHandle = (AllocatorManager.AllocatorHandle)allocator;
@@ -1817,7 +1821,7 @@ namespace Unity.HLODSystem.Utils
 #if UNITY_8UV_SUPPORT
             ReadOnlySpan<Vector2> uv5, ReadOnlySpan<Vector2> uv6, ReadOnlySpan<Vector2> uv7, ReadOnlySpan<Vector2> uv8,
 #endif // UNITY_8UV_SUPPORT
-            ReadOnlySpan<Color> colors, int maxTriangles, int maxSubmeshes, int maxBindposes)
+            ReadOnlySpan<Color> colors, int maxTriangles = 0, int maxSubmeshes = 0, int maxBindposes = 0)
         {
 #if USING_COLLECTIONS
             var allocatorHandle = (AllocatorManager.AllocatorHandle)allocator;
@@ -1970,7 +1974,7 @@ namespace Unity.HLODSystem.Utils
         
         public void ApplyToMesh(Mesh mesh)
         {
-            mesh.indexFormat = vertexCount > ushort.MaxValue
+            mesh.indexFormat = vertexCount >= ushort.MaxValue
                 ? IndexFormat.UInt32
                 : indexFormat;
 

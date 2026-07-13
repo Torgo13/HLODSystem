@@ -83,7 +83,7 @@ namespace Unity.HLODSystem.Utils
                 }
             }
 
-            using var _0 = UnityEngine.Pool.ListPool<Material>.Get(out var sharedMaterials);
+            var sharedMaterials = new System.Collections.Generic.List<Material>();
             renderer.GetSharedMaterials(sharedMaterials);
             m_materials.EnsureCapacity(sharedMaterials.Count);
             foreach (var mat in sharedMaterials)

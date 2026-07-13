@@ -32,10 +32,10 @@ namespace Unity.HLODSystem
 
             try
             {
+                EditorUtility.DisplayProgressBar("Destroy HLOD", "Destroying HLOD files", 0.0f);
                 var convertedPrefabObjects = hlod.ConvertedPrefabObjects;
                 for (int i = 0; i < convertedPrefabObjects.Count; ++i)
                 {
-                    EditorUtility.DisplayProgressBar("Destroy HLOD", "Destroying HLOD files", (float)i / convertedPrefabObjects.Count);
                     PrefabUtility.UnpackPrefabInstance(convertedPrefabObjects[i], PrefabUnpackMode.OutermostRoot,
                         InteractionMode.AutomatedAction);
                 }
@@ -439,13 +439,15 @@ namespace Unity.HLODSystem
             
             m_queue.EnqueueJob(() =>
             {
-                WorkingMesh mesh = CreateBakedGeometry(name, heightmap, bounds, distance, m_hlod);
+                WorkingMesh mesh = CreateBakedGeometry(name, heightmap, bounds, distance,
+                    m_hlod);
                 wo.SetMesh(mesh);
             });
 
             m_queue.EnqueueJob(() =>
             {
-                WorkingMaterial material = CreateBakedMaterial(name, bounds, isLeaf, m_size, m_queue, m_alphamaps, m_layers, m_hlod);
+                WorkingMaterial material = CreateBakedMaterial(name, bounds, isLeaf,
+                    m_size, m_queue, m_alphamaps, m_layers, m_hlod);
                 lock (WorkingObject.LockObject)
                 {
                     wo.Materials.Add(material);
@@ -569,7 +571,8 @@ namespace Unity.HLODSystem
 
             m_queue.EnqueueJob(() =>
             {
-                WorkingTexture albedo = BakeAlbedo(name, bounds, m_hlod.TextureSize, m_size, m_queue, m_alphamaps, m_layers);
+                WorkingTexture albedo = BakeAlbedo(name, bounds, m_hlod.TextureSize,
+                    m_size, m_queue, m_alphamaps, m_layers);
                 material.AddTexture(m_hlod.AlbedoPropertyName, albedo);
             });
 
@@ -577,7 +580,8 @@ namespace Unity.HLODSystem
             {
                 m_queue.EnqueueJob(() =>
                 {
-                    WorkingTexture normal = BakeNormal(name, bounds, m_hlod.TextureSize, m_size, m_queue, m_alphamaps, m_layers);
+                    WorkingTexture normal = BakeNormal(name, bounds, m_hlod.TextureSize,
+                        m_size, m_queue, m_alphamaps, m_layers);
                     material.AddTexture(m_hlod.NormalPropertyName, normal);
                 });
             }
@@ -586,7 +590,8 @@ namespace Unity.HLODSystem
             {
                 m_queue.EnqueueJob(() =>
                 {
-                    WorkingTexture mask = BakeMask(name, bounds, m_hlod.TextureSize, m_size, m_queue, m_alphamaps, m_layers);
+                    WorkingTexture mask = BakeMask(name, bounds, m_hlod.TextureSize,
+                        m_size, m_queue, m_alphamaps, m_layers);
                     material.AddTexture(m_hlod.MaskPropertyName, mask);
                 });
             }
@@ -626,8 +631,7 @@ namespace Unity.HLODSystem
         }
 
         /// <remarks>Background thread</remarks>
-        static
-        private void EnqueueBlendTextureJob(WorkingTexture texture, Bounds bounds, int resolution,
+        private static void EnqueueBlendTextureJob(WorkingTexture texture, Bounds bounds, int resolution,
             Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers,
             System.Func<int, float, float, float, float, bool, Color> getColor, System.Func<Color, Color>? packColor = null)
         {
@@ -711,7 +715,9 @@ namespace Unity.HLODSystem
             albedoTexture.Name = name + "_Albedo";
             albedoTexture.WrapMode = TextureWrapMode.Clamp;
 
-            EnqueueBlendTextureJob(albedoTexture, bounds, resolution, m_size, m_queue, m_alphamaps, m_layers, (layer, wx, wz, sx, sz, linear) => 
+            EnqueueBlendTextureJob(albedoTexture, bounds, resolution,
+                m_size, m_queue, m_alphamaps, m_layers,
+                (layer, wx, wz, sx, sz, linear) =>
             {
                 Color c = m_layers[layer].GetColorByWorld(wx, wz, sx, sz);
                 if (!linear)
@@ -731,7 +737,9 @@ namespace Unity.HLODSystem
             maskTexture.Name = name + "_Mask";
             maskTexture.WrapMode = TextureWrapMode.Clamp;
 
-            EnqueueBlendTextureJob(maskTexture, bounds, resolution, m_size, m_queue, m_alphamaps, m_layers, (layer, wx, wz, sx, sz, linear) =>
+            EnqueueBlendTextureJob(maskTexture, bounds, resolution,
+                m_size, m_queue, m_alphamaps, m_layers,
+                (layer, wx, wz, sx, sz, linear) =>
             {
                 Color c = m_layers[layer].GetMaskByWorld(wx, wz, sx, sz);
                 if (!linear)
@@ -750,7 +758,9 @@ namespace Unity.HLODSystem
             normalTexture.Name = name + "_Normal";
             normalTexture.WrapMode = TextureWrapMode.Clamp;
 
-            EnqueueBlendTextureJob(normalTexture, bounds, resolution, m_size, m_queue, m_alphamaps, m_layers, (layer, wx, wz, sx, sz, linear) =>
+            EnqueueBlendTextureJob(normalTexture, bounds, resolution,
+                m_size, m_queue, m_alphamaps, m_layers,
+                (layer, wx, wz, sx, sz, linear) =>
             {
                 Color c = m_layers[layer].GetNormalByWorld(wx, wz, sx, sz);
                 c = UnPackNormal(c, m_layers[layer].NormalScale);
@@ -895,7 +905,7 @@ namespace Unity.HLODSystem
         /// <remarks>Background thread</remarks>
         private WorkingMesh MakeBorder(WorkingMesh? source, Heightmap? heightmap, int borderCount,
             List<Vector3> vertices, List<Vector3> normals, List<Vector2> uvs, List<List<int>> subMeshTris,
-            HashSet<int> vertexIndces, List<BorderVertex> borderVertices, HashSet<Vector2Int> candidates)
+            HashSet<int> vertexIndces, List<BorderVertex> borderVertices, HashSet<Vector2Int> edges)
         {
 #if BUGFIX
             if (source == null)
@@ -921,12 +931,11 @@ namespace Unity.HLODSystem
 
             for (int si = 0; si < source.subMeshCount; ++si)
             {
-                var trisNative = source.GetTrianglesNative(si);
-                var tris = new List<int>(trisNative);
-                _ = GetEdgeList(trisNative.AsReadOnlySpan(), candidates);
+                var tris = new List<int>(source.GetTrianglesNative(si));
+                _ = GetEdgeList(tris.AsReadOnlySpan(), edges);
                 vertexIndces.Clear();
 
-                foreach (var edge in candidates)
+                foreach (var edge in edges)
                 {
                     vertexIndces.Add(edge.x);
                     vertexIndces.Add(edge.y);
@@ -1005,7 +1014,8 @@ namespace Unity.HLODSystem
         }
 
         /// <remarks>Background thread</remarks>
-        private static void ReampUV(WorkingMesh mesh, Heightmap heightmap)
+        static
+        private void ReampUV(WorkingMesh mesh, Heightmap heightmap)
             => RemapUV(mesh, heightmap);
 
         /// <remarks>Background thread</remarks>
@@ -1019,23 +1029,6 @@ namespace Unity.HLODSystem
             var uvs = mesh.uv;
 #endif // OPTIMISATION
 
-#if ZERO
-            for (int j = 0; j < UnityMeshSimplifier.MeshUtils.UVChannelCount; ++j)
-            {
-                var uvs = mesh[j];
-                if (!uvs.IsCreated || uvs.Length < mesh.vertexCount)
-                    continue;
-
-                for (int i = 0, vertexCount = mesh.vertexCount; i < vertexCount; ++i)
-                {
-                    Vector2 uv;
-                    uv.x = (vertices[i].x - heightmap.Offset.x) / heightmap.Size.x;
-                    uv.y = (vertices[i].z - heightmap.Offset.z) / heightmap.Size.z;
-                    uvs[i] = uv;
-                    //vertices[i].
-                }
-            }
-#else
             for (int i = 0, vertexCount = mesh.vertexCount; i < vertexCount; ++i)
             {
                 Vector2 uv;
@@ -1044,7 +1037,6 @@ namespace Unity.HLODSystem
                 uvs[i] = uv;
                 //vertices[i].
             }
-#endif // ZERO
 
 #if OPTIMISATION
 #else
@@ -1284,11 +1276,12 @@ namespace Unity.HLODSystem
                     nameQueue.Enqueue(name + "_" + (i + 1));
                     depthQueue.Enqueue(depth + 1);
                 }
-                
-                info.WorkingObjects.Add(CreateBakedTerrain(name, node.Bounds, info.Heightmap, depth, node.GetChildCount() == 0, m_size, m_queue, m_alphamaps, m_layers, m_hlod));
+
+                info.WorkingObjects.Add(CreateBakedTerrain(name, node.Bounds, info.Heightmap, depth, node.GetChildCount() == 0,
+                    m_size, m_queue, m_alphamaps, m_layers, m_hlod));
                 info.Distances.Add(depth);
                 results.Add(info);
-                
+
                 if (depth > maxDepth)
                     maxDepth = depth;
             }
@@ -1333,8 +1326,7 @@ namespace Unity.HLODSystem
                     m_size = data.size;
 
                     var heightmapResolution = data.heightmapResolution;
-                    var
-                    m_heightmap = new Heightmap(heightmapResolution, heightmapResolution, m_size,
+                    var m_heightmap = new Heightmap(heightmapResolution, heightmapResolution, m_size,
                         data.GetHeights(0, 0, heightmapResolution, heightmapResolution));
 
                     string materialPath = AssetDatabase.GUIDToAssetPath(m_hlod.MaterialGUID);
@@ -1457,11 +1449,13 @@ namespace Unity.HLODSystem
                                                                     Mathf.RoundToInt(Mathf.Pow(2.0f,
                                                                         (float)info.Distances[oi]));
                                             using (WorkingMesh m = MakeBorder(o.Mesh, info.Heightmap,
-                                                borderVertexCount, vertices, normals, uvs, subMeshTris,
+                                                borderVertexCount,
+                                                vertices, normals, uvs, subMeshTris,
                                                 vertexIndices, borderVertices, candidates))
                                             {
                                                 ReampUV(m, info.Heightmap);
-                                                o.SetMesh(MakeFillHoleMesh(m, newTris, edgeList, groups, candidates));
+                                                o.SetMesh(MakeFillHoleMesh(m,
+                                                    newTris, edgeList, groups, candidates));
                                             }
                                         }
                                     });

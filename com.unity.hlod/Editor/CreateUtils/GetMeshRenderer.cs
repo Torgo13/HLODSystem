@@ -138,8 +138,8 @@ namespace Unity.HLODSystem
 
             private void RemoveUnderMeshSetters(HLODMeshSetter setter)
             {
-                using var _0 = UnityEngine.Pool.ListPool<LODGroup>.Get(out var lodGroups);
-                using var _1 = UnityEngine.Pool.ListPool<MeshRenderer>.Get(out var meshRenderers);
+                var lodGroups = new List<LODGroup>();
+                var meshRenderers = new List<MeshRenderer>();
                 setter.GetComponentsInChildren<LODGroup>(lodGroups);
                 setter.GetComponentsInChildren<MeshRenderer>(meshRenderers);
                 m_lodGroups.RemoveAll(lodGroups);

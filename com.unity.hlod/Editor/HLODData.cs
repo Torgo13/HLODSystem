@@ -657,7 +657,7 @@ namespace Unity.HLODSystem
         }
         public void AddFromGameObject(GameObject go)
         {
-            using (WorkingObject wo = new WorkingObject(Allocator.Temp))
+            using (WorkingObject wo = new WorkingObject(Allocator.Persistent))
             {
                 var mr = go.GetComponent<MeshRenderer>();
                 if (mr == null)

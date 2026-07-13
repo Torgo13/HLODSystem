@@ -32,7 +32,6 @@ namespace Unity.HLODSystem
             }
         }
 
-        static
         private void ProcessMeshSetter(HLODMeshSetter setter)
         {
             if (setter.RemoveAtBuild == false)

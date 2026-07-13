@@ -88,7 +88,13 @@ namespace Unity.HLODSystem
                 return;
 #endif
 
+#if ZERO
             var m_activeControllers = ActiveControllers;
+#endif // ZERO
+            
+            if (m_activeControllers == null)
+                return;
+            
             for (int i = 0; i < m_activeControllers.Count; ++i)
             {
                 m_activeControllers[i].UpdateCull(cam);

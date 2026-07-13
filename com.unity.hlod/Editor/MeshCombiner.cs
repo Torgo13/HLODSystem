@@ -70,23 +70,6 @@ namespace Unity.HLODSystem
 #endif // UNITY_8UV_SUPPORT
             List<Color> colors, List<int> triangles)
         {
-            remappers.Clear();
-            vertices.Clear();
-            normals.Clear();
-            tangents.Clear();
-            uv1s.Clear();
-            uv2s.Clear();
-            uv3s.Clear();
-            uv4s.Clear();
-#if UNITY_8UV_SUPPORT
-            uv5s.Clear();
-            uv6s.Clear();
-            uv7s.Clear();
-            uv8s.Clear();
-#endif // UNITY_8UV_SUPPORT
-            colors.Clear();
-            triangles.Clear();
-            
             //I didn't consider animation mesh combine.
             int verticesCount = 0;
             int normalCount = 0;
@@ -105,11 +88,13 @@ namespace Unity.HLODSystem
 
             int trianglesCount = 0;
 
+            remappers.Clear();
             if (remappers.Capacity < infos.Count)
                 remappers.Capacity = infos.Count;
             
             for (int i = 0; i < infos.Count; ++i)
             {
+                using
                 var meshIndices = infos[i].Mesh.GetTrianglesNative(infos[i].MeshIndex);
                 Dictionary<int, int> remapper = CalculateMeshRemap(meshIndices);
 
@@ -134,6 +119,22 @@ namespace Unity.HLODSystem
             }
             
             WorkingMesh combinedMesh = new WorkingMesh(allocator, verticesCount, trianglesCount, 1, 0);
+
+            vertices.Clear();
+            normals.Clear();
+            tangents.Clear();
+            uv1s.Clear();
+            uv2s.Clear();
+            uv3s.Clear();
+            uv4s.Clear();
+#if UNITY_8UV_SUPPORT
+            uv5s.Clear();
+            uv6s.Clear();
+            uv7s.Clear();
+            uv8s.Clear();
+#endif // UNITY_8UV_SUPPORT
+            colors.Clear();
+            triangles.Clear();
 
             for (int i = 0; i < infos.Count; ++i)
             {
@@ -198,7 +199,7 @@ namespace Unity.HLODSystem
 
             combinedMesh.name = "CombinedMesh";
             combinedMesh.SetVertices(vertices);
-            combinedMesh.SetVertices(normals);
+            combinedMesh.SetNormals(normals);
             combinedMesh.SetTangents(tangents);
             combinedMesh.SetUV(uv1s);
             combinedMesh.SetUV2(uv2s);
@@ -216,11 +217,12 @@ namespace Unity.HLODSystem
 
             return combinedMesh;
         }
-        
-        static
-        private void FillBuffer<T>(ref List<T> buffer, T[]? source, Dictionary<int,int> remapper, T defaultValue)
-        { 
+
+        private static void FillBuffer<T>(ref List<T> buffer, T[]? source, Dictionary<int, int> remapper, T defaultValue)
+        {
             int startIndex = buffer.Count;
+            if (buffer.Capacity < startIndex + remapper.Count)
+                buffer.Capacity = startIndex + remapper.Count;
             for (int i = 0, remapperCount = remapper.Count; i < remapperCount; i++)
             {
                 buffer.Add(defaultValue);
@@ -238,8 +240,7 @@ namespace Unity.HLODSystem
             }
         }
 
-        static
-        private void FillIndices(ref List<int> buffer, System.ReadOnlySpan<int> source, Dictionary<int,int> remapper, int startIndex )
+        private static void FillIndices(ref List<int> buffer, System.ReadOnlySpan<int> source, Dictionary<int, int> remapper, int startIndex )
         {
             for (int i = 0; i < source.Length; ++i)
             {

@@ -17,14 +17,15 @@ namespace Unity.HLODSystem
         }
         public void OnProcessScene(Scene scene, BuildReport report)
         {
-            using var _0 = UnityEngine.Pool.ListPool<GameObject>.Get(out var rootObjects);
-            scene.GetRootGameObjects(rootObjects);
-            using var _1 = UnityEngine.Pool.ListPool<Terrain>.Get(out var terrains);
-            using var _2 = UnityEngine.Pool.HashSetPool<TerrainData?>.Get(out var needDestroyDatas);
-            using var _3 = UnityEngine.Pool.ListPool<HLOD>.Get(out var hlods);
-            using var _4 = UnityEngine.Pool.ListPool<TerrainHLOD>.Get(out var terrainHlods);
+            var rootObjectsList = new List<GameObject>();
+            scene.GetRootGameObjects(rootObjectsList);
+            var rootObjects = rootObjectsList.AsReadOnlySpan();
+            var terrains = new List<Terrain>();
+            var needDestroyDatas = new HashSet<TerrainData?>();
+            var hlods = new List<HLOD>();
+            var terrainHlods = new List<TerrainHLOD>();
 
-            for (int oi = 0, rootObjectsCount = rootObjects.Count; oi < rootObjectsCount; ++oi)
+            for (int oi = 0; oi < rootObjects.Length; ++oi)
             {
                 hlods.Clear();
                 terrainHlods.Clear();

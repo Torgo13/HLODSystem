@@ -228,7 +228,7 @@ namespace Unity.HLODSystem
 
             int index = 1;
             var atlases = packer.Atlases;
-            using var _0 = UnityEngine.Pool.DictionaryPool<string, WorkingTexture>.Get(out var workingTextures);
+            var workingTextures = new Dictionary<string, WorkingTexture>();
             foreach (var atlas in atlases)
             {
                 workingTextures.Clear();
@@ -285,7 +285,7 @@ namespace Unity.HLODSystem
                 return;
 
             List<TextureInfo> textureInfoList = options.TextureInfoList;
-            using var _0 = UnityEngine.Pool.ListPool<MeshCombiner.CombineInfo>.Get(out var combineInfos);
+            var combineInfos = new List<MeshCombiner.CombineInfo>();
             var hlodWorldToLocal = rootTransform.worldToLocalMatrix;
 
             for (int i = 0; i < info.WorkingObjects.Count; ++i)

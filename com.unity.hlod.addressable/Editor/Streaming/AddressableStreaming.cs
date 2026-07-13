@@ -291,7 +291,7 @@ namespace Unity.HLODSystem.Streaming
 
                 hlodMaterial.Value.GetTextureCount();
                 Material mat = hlodMaterial.Value.To();
-                string matFilename = mat.name;
+                string matName = mat.name;
                 for (int ti = 0; ti < hlodMaterial.Value.GetTextureCount(); ++ti)
                 {
                     var serializeTexture = hlodMaterial.Value.GetTexture(ti);
@@ -302,7 +302,7 @@ namespace Unity.HLODSystem.Streaming
                     Texture2D texture = serializeTexture.To();
                     byte[] bytes = texture.EncodeToPNG();
 #endif // OPTIMISATION
-                    string textureFilename = $"{path}{filenamePrefix}_{matFilename}_{serializeTexture.TextureName}.png";
+                    string textureFilename = $"{path}{filenamePrefix}_{matName}_{serializeTexture.TextureName}.png";
                     File.WriteAllBytes(textureFilename, bytes);
 
                     AssetDatabase.ImportAsset(textureFilename);
@@ -322,7 +322,7 @@ namespace Unity.HLODSystem.Streaming
                     mat.SetTexture(serializeTexture.Name, storedTexture);
                 }
 
-                matFilename = $"{path}{filenamePrefix}_{matFilename}.mat";
+                string matFilename = $"{path}{filenamePrefix}_{matName}.mat";
                 AssetDatabase.CreateAsset(mat, matFilename);
                 AssetDatabase.ImportAsset(matFilename);
 
@@ -330,7 +330,7 @@ namespace Unity.HLODSystem.Streaming
                 m_manager.AddGeneratedResource(storedMaterial);
 
 
-                using (WorkingMaterial newWM = new WorkingMaterial(Collections.Allocator.Temp, storedMaterial))
+                using (WorkingMaterial newWM = new WorkingMaterial(Collections.Allocator.Persistent, storedMaterial))
                 {
                     var newSM = new HLODData.SerializableMaterial();
                     newSM.From(newWM);
@@ -385,7 +385,7 @@ namespace Unity.HLODSystem.Streaming
             spaceNodes.Enqueue(rootNode);
             levels.Enqueue(0);
 
-            using var _0 = UnityEngine.Pool.ListPool<HLODTreeNode>.Get(out var childTreeNodes);
+            var childTreeNodes = new List<HLODTreeNode>();
             while (hlodTreeNodes.Count > 0)
             {
                 var hlodTreeNode = hlodTreeNodes.Dequeue();
@@ -613,7 +613,7 @@ namespace Unity.HLODSystem.Streaming
             if (string.IsNullOrEmpty(path) && PrefabUtility.GetPrefabInstanceStatus(obj) == PrefabInstanceStatus.Connected)
             {
                 Object prefab = PrefabUtility.GetCorrespondingObjectFromOriginalSource(obj);
-                path = AssetDatabase.GetAssetPath(prefab);   
+                path = AssetDatabase.GetAssetPath(prefab);
             }
 
             return path;
@@ -649,7 +649,7 @@ namespace Unity.HLODSystem.Streaming
                     return settings.groups[i];
             }
 
-            using var _0 = UnityEngine.Pool.ListPool<AddressableAssetGroupSchema>.Get(out var schemas);
+            var schemas = new List<AddressableAssetGroupSchema>();
 
             ContentUpdateGroupSchema contentUpdateGroupSchema = ScriptableObject.CreateInstance<ContentUpdateGroupSchema>();
             BundledAssetGroupSchema bundledAssetGroupSchema = ScriptableObject.CreateInstance<BundledAssetGroupSchema>();

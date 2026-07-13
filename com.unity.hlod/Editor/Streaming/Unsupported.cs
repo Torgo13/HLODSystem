@@ -253,7 +253,7 @@ namespace Unity.HLODSystem.Streaming
                 m_manager.AddGeneratedResource(storedMaterial);
 
 
-                using (WorkingMaterial newWM = new WorkingMaterial(Collections.Allocator.Temp, storedMaterial))
+                using (WorkingMaterial newWM = new WorkingMaterial(Collections.Allocator.Persistent, storedMaterial))
                 {
                     var newSM = new HLODData.SerializableMaterial();
                     newSM.From(newWM);

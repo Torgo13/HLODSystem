@@ -19,19 +19,21 @@ namespace Unity.HLODSystem
     public static class HLODCreator
     {
         private static List<Collider> GetColliders(List<GameObject> gameObjects, float minObjectSize,
-            List<Collider> colliders, List<Collider> results)
+            List<Collider> collidersList, List<Collider> results)
         {
             results.Clear();
+
             for (int i = 0; i < gameObjects.Count; ++i)
             {
                 GameObject obj = gameObjects[i];
-                colliders.Clear();
-                obj.GetComponentsInChildren<Collider>(colliders);
-                
-                for (int ci = 0, collidersCount = colliders.Count; ci < collidersCount; ++ci)
+                collidersList.Clear();
+                obj.GetComponentsInChildren<Collider>(collidersList);
+                var colliders = collidersList.AsReadOnlySpan();
+
+                for (int ci = 0; ci < colliders.Length; ++ci)
                 {
                     Collider collider = colliders[ci];
-                    var size = collider.bounds.size;
+                    Vector3 size = collider.bounds.size;
                     float max = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
                     if (max < minObjectSize)
                         continue;
@@ -61,6 +63,7 @@ namespace Unity.HLODSystem
                     return;
 
                 int parentIndex = list[curIndex].Parent;
+
                 if (parentIndex < 0)
                     return;
 
@@ -81,12 +84,13 @@ namespace Unity.HLODSystem
         {
             //List<HLODBuildInfo> resultsCandidates = new List<HLODBuildInfo>();
             
-            int maxLevel = 0;
+            travelQueue.Clear();
 
             candidateItems.Clear();
             buildInfoCandidates.Clear();
 
-            travelQueue.Clear();
+            int maxLevel = 0;
+
             travelQueue.Enqueue(new TravelQueueItem()
             {
                 Node = root,
@@ -202,9 +206,7 @@ namespace Unity.HLODSystem
                 hlod.ConvertedPrefabObjects.Clear();
                 hlod.GeneratedObjects.Clear();
 
-                List<Renderer> renderers = UnityEngine.Pool.ListPool<Renderer>.Get();
-                Bounds bounds = hlod.GetBounds(renderers);
-                UnityEngine.Pool.ListPool<Renderer>.Release(renderers);
+                Bounds bounds = hlod.GetBounds();
 
                 _ = ObjectUtils.HLODTargets(hlod.transform, hlodTargets);
                 ISpaceSplitter? splitter = SpaceSplitterTypes.CreateInstance(hlod);
@@ -355,7 +357,7 @@ namespace Unity.HLODSystem
                         InteractionMode.AutomatedAction);
                 }
 
-                using var _0 = UnityEngine.Pool.ListPool<HLODControllerBase>.Get(out var controllers);
+                var controllers = new List<HLODControllerBase>();
                 _ = hlod.GetHLODControllerBases(controllers);
                 var generatedObjects = hlod.GeneratedObjects;
                 for (int i = 0; i < generatedObjects.Count; ++i)
@@ -409,7 +411,7 @@ namespace Unity.HLODSystem
             
             hlod.AddGeneratedResource(serializer);
 
-            using var _0 = UnityEngine.Pool.ListPool<HLODControllerBase>.Get(out var controllers);
+            var controllers = new List<HLODControllerBase>();
             _ = hlod.GetHLODControllerBases(controllers);
             if (controllers.Count == 0)
                  return;

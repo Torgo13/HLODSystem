@@ -44,8 +44,9 @@ namespace Unity.HLODSystem
             static
             private void DrawHeaderCallback(Rect rect)
             {
-                if (styles != null)
-                    EditorGUI.LabelField(rect, styles.meshRenderersHeader);
+                if (styles == null)
+                    return;
+                EditorGUI.LabelField(rect, styles.meshRenderersHeader);
             }
             
             private void DrawElementCallback(Rect rect, int index, bool isactive, bool isfocused)
@@ -171,8 +172,9 @@ namespace Unity.HLODSystem
         static
         private void DrawHeaderMeshSetting(Rect rect)
         {
-            if (styles != null)
-                GUI.Label(rect, styles.meshSettingHeader);
+            if (styles == null)
+                return;
+            GUI.Label(rect, styles.meshSettingHeader);
         }
         private void DrawElementMeshSetting(Rect rect, int index, bool isactive, bool isfocused)
         {
