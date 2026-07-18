@@ -32,7 +32,7 @@ namespace Unity.HLODSystem
 
                 rootObjects[oi].GetComponentsInChildren(includeInactive: true, hlods);
                 rootObjects[oi].GetComponentsInChildren(includeInactive: true, terrainHlods);
-                rootObjects[oi].GetComponentsInChildren(includeInactive: true, terrains);
+                terrains.AddRange(rootObjects[oi].GetComponentsInChildren<Terrain>(includeInactive: true));
 
                 for (int hi = 0; hi < hlods.Count; ++hi)
                 {

@@ -76,11 +76,15 @@ namespace Unity.HLODSystem
 
                     var serializableObjects = data.GetObjects();
                     var serializableColliders = data.GetColliders();
-                    var createdGameObjects = new Dictionary<string, List<GameObject>>();
-                    var createdColliders = new Dictionary<string, GameObject>();
+                    Dictionary<string, List<GameObject>>
+                        createdGameObjects = new Dictionary<string, List<GameObject>>();
+                    Dictionary<string, GameObject> createdColliders = new Dictionary<string, GameObject>();
                     var materials = new List<Material?>();
 
+#if OPTIMISATION_NULL
+#else
                     if (serializableObjects != null)
+#endif // OPTIMISATION_NULL
                     {
                         for (int oi = 0; oi < serializableObjects.Count; ++oi)
                         {
@@ -135,7 +139,10 @@ namespace Unity.HLODSystem
                         }
                     }
 
+#if OPTIMISATION_NULL
+#else
                     if (serializableColliders != null)
+#endif // OPTIMISATION_NULL
                     {
                         string assetPath = ctx.assetPath;
                         for (int ci = 0; ci < serializableColliders.Count; ++ci)

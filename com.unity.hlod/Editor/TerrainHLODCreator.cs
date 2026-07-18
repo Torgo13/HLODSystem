@@ -261,8 +261,8 @@ namespace Unity.HLODSystem
                 float u = (wx + m_offset.x) / m_size.x;
                 float v = (wz + m_offset.y) / m_size.y;
 
-                float mipx = Mathf.Max(0, sx / (m_chunkSize * 2.0f) - 1);
-                float mipy = Mathf.Max(0, sz / (m_chunkSize * 2.0f) - 1);
+                float mipx = Mathf.Max(0, sx / m_chunkSize);
+                float mipy = Mathf.Max(0, sz / m_chunkSize);
 
                 float mip = Mathf.Max(mipx, mipy);
 
@@ -448,10 +448,7 @@ namespace Unity.HLODSystem
             {
                 WorkingMaterial material = CreateBakedMaterial(name, bounds, isLeaf,
                     m_size, m_queue, m_alphamaps, m_layers, m_hlod);
-                lock (WorkingObject.LockObject)
-                {
-                    wo.Materials.Add(material);
-                }
+                wo.Materials.Add(material);
             });
 
 
@@ -733,7 +730,7 @@ namespace Unity.HLODSystem
         private static WorkingTexture BakeMask(string name, Bounds bounds, int resolution,
             Vector3 m_size, JobQueue m_queue, DisposableList<WorkingTexture> m_alphamaps, DisposableList<Layer> m_layers)
         {
-            WorkingTexture maskTexture = new WorkingTexture(Allocator.Persistent, TextureFormat.ARGB32, resolution, resolution, false);
+            WorkingTexture maskTexture = new WorkingTexture(Allocator.Persistent, TextureFormat.ARGB32, resolution, resolution, true);
             maskTexture.Name = name + "_Mask";
             maskTexture.WrapMode = TextureWrapMode.Clamp;
 
@@ -1367,14 +1364,14 @@ namespace Unity.HLODSystem
 
                         List<SpaceNode> rootNodeList = splitter.CreateSpaceTree(m_hlod.GetBounds(), m_hlod.ChunkSize * 2.0f,
 #if OPTIMISATION
-                        m_hlod.transform, default(ReadOnlySpan<GameObject>), progress => { EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Create mesh", progress); });
+                        m_hlod.transform, default(ReadOnlySpan<GameObject>), progress => { EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Create mesh", 0.25f * progress); });
 #else
                         m_hlod.transform, null, progress => { });
 
                         EditorUtility.DisplayProgressBar("Bake HLOD", "Create mesh", 0.0f);
 #endif // OPTIMISATION
 
-                        using var results = new DisposableList<HLODBuildInfo>();
+                        using var buildInfos = new DisposableList<HLODBuildInfo>();
                         var trevelQueue = new Queue<SpaceNode>();
                         var parentQueue = new Queue<int>();
                         var nameQueue = new Queue<string>();
@@ -1382,9 +1379,9 @@ namespace Unity.HLODSystem
                         var materials = new List<Material>();
                         foreach (var rootNode in rootNodeList)
                         {
-                            using (DisposableList<HLODBuildInfo> buildInfos = CreateBuildInfo(rootNode,
+                            _ = CreateBuildInfo(rootNode,
                                 m_heightmap, m_size, m_queue, m_alphamaps, m_layers, m_hlod,
-                                results, trevelQueue, parentQueue, nameQueue, depthQueue))
+                                buildInfos, trevelQueue, parentQueue, nameQueue, depthQueue);
                             {
                                 yield return m_queue.WaitFinish();
                                 //Write material & textures
@@ -1423,14 +1420,14 @@ namespace Unity.HLODSystem
                                 Debug.Log("[TerrainHLOD] Simplify: " + sw.Elapsed.ToString("g"));
                                 sw.Reset();
                                 sw.Start();
-                                EditorUtility.DisplayProgressBar("Bake HLOD", "Make border", 0.0f);
+                                EditorUtility.DisplayProgressBar("Bake HLOD", "Make border", 0.75f);
 
                                 for (int i = 0; i < buildInfos.Count; ++i)
                                 {
                                     HLODBuildInfo info = buildInfos[i];
                                     m_queue.EnqueueJob(() =>
                                     {
-                                        const int capacity = 64;
+                                        const int capacity = 2048;
                                         var vertices = new List<Vector3>(capacity);
                                         var normals = new List<Vector3>(capacity);
                                         var uvs = new List<Vector2>(capacity);
@@ -1502,10 +1499,8 @@ namespace Unity.HLODSystem
                                             }
 
                                             materials.Clear();
-                                            for (int mi = 0; mi < wo.Materials.Count; ++mi)
+                                            foreach (WorkingMaterial wm in wo.Materials)
                                             {
-
-                                                WorkingMaterial wm = wo.Materials[mi];
                                                 if (wm.NeedWrite() == false)
                                                 {
                                                     materials.Add(wm.ToMaterial());

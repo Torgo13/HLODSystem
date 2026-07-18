@@ -8,8 +8,8 @@ namespace Unity.HLODSystem.Utils
     {
         public static WorkingObject ToWorkingObject(this MeshRenderer renderer, Allocator allocator)
         {
-            WorkingObject obj = new WorkingObject(allocator);
-            obj.FromRenderer(renderer);
+            WorkingObject obj = new WorkingObject(allocator,
+                renderer, renderer.GetComponent<MeshFilter>().sharedMesh);
             return obj;
         }
     }
@@ -20,11 +20,8 @@ namespace Unity.HLODSystem.Utils
     {
         private NativeArray<int> m_detector = new NativeArray<int>(1, Allocator.Persistent);
 
-        private static readonly object lockObject = new object();
-        public static object LockObject => lockObject;
-
         private WorkingMesh? m_mesh;
-        private DisposableList<WorkingMaterial> m_materials;
+        private DisposableBag<WorkingMaterial> m_materials = new DisposableBag<WorkingMaterial>();
         private Matrix4x4 m_localToWorld;
 
         private Allocator m_allocator;
@@ -38,7 +35,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_mesh; }
         }
 
-        public DisposableList<WorkingMaterial> Materials
+        public DisposableBag<WorkingMaterial> Materials
         {
             get { return m_materials; }
         }
@@ -54,38 +51,33 @@ namespace Unity.HLODSystem.Utils
             set => m_lightProbeUsage = value;
         }
 
-        public WorkingObject(Allocator allocator)
+        public WorkingObject(Allocator allocator,
+            WorkingMesh? mesh = null)
         {
             m_allocator = allocator;
-            m_mesh = null;
-            m_materials = new DisposableList<WorkingMaterial>();
+            m_mesh = mesh;
             m_localToWorld = Matrix4x4.identity;
             m_lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.BlendProbes;
         }
+
+        public WorkingObject(Allocator allocator,
+            MeshRenderer renderer, Mesh filterSharedMesh)
+        {
+            m_allocator = allocator;
+            m_mesh = filterSharedMesh.ToWorkingMesh(m_allocator);
+            m_localToWorld = Matrix4x4.identity;
+            m_lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.BlendProbes;
+            FromRenderer(renderer);
+        }
         
-        public void FromRenderer(MeshRenderer renderer,
-            Mesh? filterSharedMesh = null)
+        public void FromRenderer(MeshRenderer renderer)
         {
             //clean old data
-            m_mesh?.Dispose();
+            //m_mesh?.Dispose();
             m_materials.Dispose();
-
-            if (filterSharedMesh != null)
-            {
-                m_mesh = filterSharedMesh.ToWorkingMesh(m_allocator);
-            }
-            else if (renderer.TryGetComponent(out MeshFilter filter))
-            {
-                filterSharedMesh = filter.sharedMesh;
-                if (filterSharedMesh != null)
-                {
-                    m_mesh = filterSharedMesh.ToWorkingMesh(m_allocator);
-                }
-            }
 
             var sharedMaterials = new System.Collections.Generic.List<Material>();
             renderer.GetSharedMaterials(sharedMaterials);
-            m_materials.EnsureCapacity(sharedMaterials.Count);
             foreach (var mat in sharedMaterials)
             {
                 m_materials.Add(mat.ToWorkingMaterial(m_allocator));

@@ -1,4 +1,3 @@
-
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Collections;
@@ -144,7 +143,7 @@ namespace Unity.HLODSystem
 
                 if (verticesCount > 0)
                 {
-                    FillBuffer(ref vertices, mesh.vertices, remapper, Vector3.zero);
+                    FillBuffer(ref vertices, mesh.Vertices, remapper, Vector3.zero);
                     for (int vi = startIndex; vi < vertices.Count; ++vi)
                     {
                         vertices[vi] = infos[i].Transform.MultiplyPoint(vertices[vi]);
@@ -153,7 +152,7 @@ namespace Unity.HLODSystem
 
                 if (normalCount > 0)
                 {
-                    FillBuffer(ref normals, mesh.normals, remapper, Vector3.up);
+                    FillBuffer(ref normals, mesh.Normals, remapper, Vector3.up);
                     for (int ni = startIndex; ni < normals.Count; ++ni)
                     {
                         normals[ni] = infos[i].Transform.MultiplyVector(normals[ni]);
@@ -162,7 +161,7 @@ namespace Unity.HLODSystem
 
                 if (tangentCount > 0)
                 {
-                    FillBuffer(ref tangents, mesh.tangents, remapper, new Vector4(1, 0, 0, 1));
+                    FillBuffer(ref tangents, mesh.Tangents, remapper, new Vector4(1, 0, 0, 1));
                     for (int ti = startIndex; ti < tangents.Count; ++ti)
                     {
                         Vector3 tanVec = new Vector3(tangents[ti].x, tangents[ti].y, tangents[ti].z);
@@ -173,25 +172,25 @@ namespace Unity.HLODSystem
                 }
 
                 if ( UV1Count > 0 )
-                    FillBuffer(ref uv1s, mesh.uv, remapper, Vector2.zero);
+                    FillBuffer(ref uv1s, mesh.UV, remapper, Vector2.zero);
                 if ( UV2Count > 0 )
-                    FillBuffer(ref uv2s, mesh.uv2, remapper, Vector2.zero);
+                    FillBuffer(ref uv2s, mesh.UV2, remapper, Vector2.zero);
                 if ( UV3Count > 0 )
-                    FillBuffer(ref uv3s, mesh.uv3, remapper, Vector2.zero);
+                    FillBuffer(ref uv3s, mesh.UV3, remapper, Vector2.zero);
                 if ( UV4Count > 0 )
-                    FillBuffer(ref uv4s, mesh.uv4, remapper, Vector2.zero);
+                    FillBuffer(ref uv4s, mesh.UV4, remapper, Vector2.zero);
 #if UNITY_8UV_SUPPORT
                 if (UV5Count > 0)
-                    FillBuffer(ref uv5s, mesh.uv5, remapper, Vector2.zero);
+                    FillBuffer(ref uv5s, mesh.UV5, remapper, Vector2.zero);
                 if (UV6Count > 0)
-                    FillBuffer(ref uv6s, mesh.uv6, remapper, Vector2.zero);
+                    FillBuffer(ref uv6s, mesh.UV6, remapper, Vector2.zero);
                 if (UV7Count > 0)
-                    FillBuffer(ref uv7s, mesh.uv7, remapper, Vector2.zero);
+                    FillBuffer(ref uv7s, mesh.UV7, remapper, Vector2.zero);
                 if (UV8Count > 0)
-                    FillBuffer(ref uv8s, mesh.uv8, remapper, Vector2.zero);
+                    FillBuffer(ref uv8s, mesh.UV8, remapper, Vector2.zero);
 #endif // UNITY_8UV_SUPPORT
                 if ( colorCount > 0 )
-                    FillBuffer(ref colors, mesh.colors, remapper, Color.white);
+                    FillBuffer(ref colors, mesh.Colors, remapper, Color.white);
 
                 FillIndices(ref triangles, mesh.GetTrianglesNative(infos[i].MeshIndex).AsReadOnlySpan(), remapper, startIndex);
 
@@ -218,7 +217,7 @@ namespace Unity.HLODSystem
             return combinedMesh;
         }
 
-        private static void FillBuffer<T>(ref List<T> buffer, T[]? source, Dictionary<int, int> remapper, T defaultValue)
+        private static void FillBuffer<T>(ref List<T> buffer, System.ReadOnlySpan<T> source, Dictionary<int, int> remapper, T defaultValue)
         {
             int startIndex = buffer.Count;
             if (buffer.Capacity < startIndex + remapper.Count)

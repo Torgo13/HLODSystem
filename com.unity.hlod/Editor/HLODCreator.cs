@@ -357,8 +357,7 @@ namespace Unity.HLODSystem
                         InteractionMode.AutomatedAction);
                 }
 
-                var controllers = new List<HLODControllerBase>();
-                _ = hlod.GetHLODControllerBases(controllers);
+                var controllers = hlod.GetHLODControllerBases();
                 var generatedObjects = hlod.GeneratedObjects;
                 for (int i = 0; i < generatedObjects.Count; ++i)
                 {
@@ -411,8 +410,7 @@ namespace Unity.HLODSystem
             
             hlod.AddGeneratedResource(serializer);
 
-            var controllers = new List<HLODControllerBase>();
-            _ = hlod.GetHLODControllerBases(controllers);
+            var controllers = hlod.GetHLODControllerBases();
             if (controllers.Count == 0)
                  return;
 

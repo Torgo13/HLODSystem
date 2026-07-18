@@ -191,7 +191,11 @@ namespace Unity.HLODSystem.Utils
         private string m_guid;
         private int m_instanceID;
         private DisposableDictionary<string, WorkingTexture> m_textures;
+#if BUGFIX
+        private System.Collections.Concurrent.ConcurrentDictionary<string, Color> m_colors;
+#else
         private Dictionary<string, Color> m_colors;
+#endif // BUGFIX
 
         private static readonly Dictionary<string, int> shaderProperties
             = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -229,18 +233,18 @@ namespace Unity.HLODSystem.Utils
             m_allocator = allocator;
             m_instanceID = 0;
             m_textures = new DisposableDictionary<string, WorkingTexture>();
-            m_colors = new Dictionary<string, Color>(StringComparer.Ordinal);
+            m_colors = new(StringComparer.Ordinal);
             m_guid = System.Guid.NewGuid().ToString("N");
         }
         public WorkingMaterialBuffer(Allocator allocator, Material mat) : this(allocator)
         {
             m_name = mat.name;
             m_instanceID = mat.GetInstanceID();
-#if OPTIMISATION // Already allocated in the base contructor
+#if OPTIMISATION // Already allocated in the base constructor
 #else
             m_textures.Dispose();
             m_textures = new DisposableDictionary<string, WorkingTexture>();
-            m_colors = new Dictionary<string, Color>();
+            m_colors = new(StringComparer.Ordinal);
 #endif // OPTIMISATION
 #if UNITY_6000_3_OR_NEWER
             string path = AssetDatabase.GetAssetPath(mat.GetEntityId());
@@ -273,7 +277,7 @@ namespace Unity.HLODSystem.Utils
                     if (shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Color)
                     {
                         string name = shader.GetPropertyName(i);
-                        m_colors.Add(name, mat.GetColor(ShaderProperty(name)));
+                        _ = m_colors.TryAdd(name, mat.GetColor(ShaderProperty(name)));
                     }
                 }
 #else
@@ -373,6 +377,9 @@ namespace Unity.HLODSystem.Utils
 
         public Color GetColor(string name)
         {
+#if BUGFIX
+            return m_colors.GetValueOrDefault(name, Color.white);
+#else
             lock (m_colors)
             {
                 if (m_colors.ContainsKey(name) == false)
@@ -380,6 +387,7 @@ namespace Unity.HLODSystem.Utils
 
                 return m_colors[name];
             }
+#endif // BUGFIX
         }
 
         

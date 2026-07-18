@@ -94,6 +94,8 @@ namespace Unity.HLODSystem.Utils
 
         public ICollection<TKey> Keys { get => m_dic.Keys; }
         public ICollection<TValue> Values { get => m_dic.Values; }
+        
+        public TValue GetValueOrDefault(TKey key, TValue defaultValue) => m_dic.GetValueOrDefault(key, defaultValue);
 #else
         public void Add(TKey key, TValue value)
         {

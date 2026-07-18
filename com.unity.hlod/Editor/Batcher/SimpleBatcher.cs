@@ -199,11 +199,9 @@ namespace Unity.HLODSystem
                     textures.Clear();
                     for (int oi = 0; oi < workingObjects.Count; ++oi)
                     {
-                        var materials = workingObjects[oi].Materials;
-
-                        for (int m = 0; m < materials.Count; ++m)
+                        foreach (var m in workingObjects[oi].Materials)
                         {
-                            var materialTextures = cache.GetMaterialTextures(materials[m]);
+                            var materialTextures = cache.GetMaterialTextures(m);
                             if (materialTextures == null)
                                 continue;
 
@@ -329,22 +327,26 @@ namespace Unity.HLODSystem
         }
 
         static
-        private void ConvertMesh(WorkingMesh mesh, DisposableList<WorkingMaterial> materials, TexturePacker.TextureAtlas atlas, string mainTextureName)
+        private void ConvertMesh(WorkingMesh mesh, DisposableBag<WorkingMaterial> materials, TexturePacker.TextureAtlas atlas, string mainTextureName)
         {
             var uv = mesh.UV;
             Span<bool> updated = stackalloc bool[uv.Length];
             updated.Clear();
             // Some meshes have submeshes that either aren't expected to render or are missing a material, so go ahead and skip
             int subMeshCount = Mathf.Min(mesh.subMeshCount, materials.Count);
-            for (int mi = 0; mi < subMeshCount; ++mi)
+            int mi = -1;
+            foreach (var material in materials)
             {
+                if (++mi >= subMeshCount)
+                    return;
+                
                 var indices = mesh.GetTrianglesNative(mi);
                 foreach (var i in indices)
                 {
                     if ( updated[i] == false )
                     {
                         var uvCoord = uv[i];
-                        var texture = materials[mi].GetTexture(mainTextureName);
+                        var texture = material.GetTexture(mainTextureName);
                         
                         if (texture == null || texture.GetGUID() == Guid.Empty)
                         {
@@ -416,15 +418,15 @@ namespace Unity.HLODSystem
             }
         }
 
-        private static string[]? inputTexturePropertyNames = null;
-        private static string[]? outputTexturePropertyNames = null;
+        private static string[] inputTexturePropertyNames = Array.Empty<string>();
+        private static string[] outputTexturePropertyNames = Array.Empty<string>();
         private static TextureInfo addingTextureInfo = new TextureInfo();
         public static void OnGUI(HLOD hlod, bool isFirst)
         {
             if (isFirst )
             {
-                inputTexturePropertyNames = null;
-                outputTexturePropertyNames = null;
+                inputTexturePropertyNames = Array.Empty<string>();
+                outputTexturePropertyNames = Array.Empty<string>();
             }
 
             EditorGUI.indentLevel += 1;
@@ -477,11 +479,11 @@ namespace Unity.HLODSystem
                 batcherOptions.MaterialGUID = matGUID;
                 outputTexturePropertyNames = mat.GetTexturePropertyNames();
             }
-            if (inputTexturePropertyNames == null)
+            if (inputTexturePropertyNames.Length == 0)
             {
                 inputTexturePropertyNames = GetAllMaterialTextureProperties(hlod.gameObject);
             }
-            if (outputTexturePropertyNames == null)
+            if (outputTexturePropertyNames.Length == 0)
             {
                 outputTexturePropertyNames = mat.GetTexturePropertyNames();
             }
@@ -580,8 +582,8 @@ namespace Unity.HLODSystem
             if (GUILayout.Button("Update texture properties"))
             {
                 //TODO: Need update automatically
-                inputTexturePropertyNames = null;
-                outputTexturePropertyNames = null;
+                inputTexturePropertyNames = Array.Empty<string>();
+                outputTexturePropertyNames = Array.Empty<string>();
             }
             EditorGUILayout.EndHorizontal();
 
@@ -589,9 +591,9 @@ namespace Unity.HLODSystem
             EditorGUI.indentLevel -= 1;
         }
 
-        static string StringPopup(string select, string[]? options)
+        static string StringPopup(string select, string[] options)
         {
-            if (options == null || options.Length == 0)
+            if (options.Length == 0)
             {
                 EditorGUILayout.Popup(0, new string[] {select});
                 return select;

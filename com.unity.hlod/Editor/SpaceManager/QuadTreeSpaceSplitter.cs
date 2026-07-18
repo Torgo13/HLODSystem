@@ -64,7 +64,7 @@ namespace Unity.HLODSystem.SpaceManager
             if (m_useSubHLODTree == false)
                 return 1;
             
-            var splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
+            List<Bounds> splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
             return splittedBounds.Count;
         }
 
@@ -73,7 +73,7 @@ namespace Unity.HLODSystem.SpaceManager
             float maxLength = 0.0f;
             if (m_useSubHLODTree)
             {
-                var splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
+                List<Bounds> splittedBounds = SplitBounds(bounds, m_subHLODTreeSize);
                 if (splittedBounds.Count > 0)
                 {
                     maxLength = Mathf.Max(splittedBounds[0].extents.x, splittedBounds[0].extents.z);
@@ -272,19 +272,22 @@ namespace Unity.HLODSystem.SpaceManager
             int xcount = Mathf.CeilToInt(boundsSize.x / splitSize);
             int zcount = Mathf.CeilToInt(boundsSize.z / splitSize);
 
+            // Avoid allocating boundsList with too many elements
+            if (xcount * zcount > ushort.MaxValue)
+                return new List<Bounds>();
+
             float xsize = boundsSize.x / xcount;
             float zsize = boundsSize.z / zcount;
-
-            Vector3 splitBoundSize = new Vector3(xsize, boundsSize.y, zsize);
-
-            var boundsExtentsY = bounds.extents.y;
-            var boundsMin = bounds.min;
 
             if (boundsList == null)
                 boundsList = new List<Bounds>(xcount * zcount);
             else
                 boundsList.Clear();
-            
+            Vector3 splitBoundSize = new Vector3(xsize, boundsSize.y, zsize);
+
+            var boundsExtentsY = bounds.extents.y;
+            var boundsMin = bounds.min;
+
             for (int z = 0; z < zcount; ++z)
             {
                 for (int x = 0; x < xcount; ++x)

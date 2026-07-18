@@ -247,6 +247,14 @@ namespace Unity.HLODSystem.Streaming
             loadInfo.Key = address;
 
 #if UNITY_6000_3_OR_NEWER
+            void loadDoneAction(GameObject obj)
+            {
+                GameObject gameObject = Instantiate(obj, parent, false);
+                var transformHandle = gameObject.transformHandle;
+                transformHandle.SetLocalPositionAndRotation(localPosition, localRotation);
+                transformHandle.localScale = localScale;
+                gameObject.SetActive(false);
+                ChangeLayersRecursively(gameObject, m_hlodLayerIndex);
 #else
             Action<GameObject> loadDoneAction = (obj) => {
                 GameObject gameObject = Instantiate(obj, parent, false);
@@ -255,14 +263,13 @@ namespace Unity.HLODSystem.Streaming
                 gameObject.transform.localScale = localScale;
                 gameObject.SetActive(false);
                 ChangeLayersRecursively(gameObject.transform, m_hlodLayerIndex);
-
+#endif // UNITY_6000_3_OR_NEWER
                 loadInfo.Instance = gameObject;
                 foreach (var callback in callbacks)
                 {
                     callback?.Invoke(gameObject);
                 }
             };
-#endif // UNITY_6000_3_OR_NEWER
 
             if (m_customLoader == null)
             {
@@ -288,23 +295,6 @@ namespace Unity.HLODSystem.Streaming
             else
             {
                 loadInfo.LoadFromCustom = true;
-#if UNITY_6000_3_OR_NEWER
-                void loadDoneAction(GameObject obj)
-                {
-                    GameObject gameObject = Instantiate(obj, parent, false);
-                    var t = gameObject.transform;
-                    t.SetLocalPositionAndRotation(localPosition, localRotation);
-                    t.localScale = localScale;
-                    gameObject.SetActive(false);
-                    ChangeLayersRecursively(gameObject, m_hlodLayerIndex);
-
-                    loadInfo.Instance = gameObject;
-                    foreach (var callback in callbacks)
-                    {
-                        callback?.Invoke(gameObject);
-                    }
-                }
-#endif // UNITY_6000_3_OR_NEWER
                 m_customLoader.CustomLoad(address, loadDoneAction);
             }            
 

@@ -50,9 +50,10 @@ namespace Unity.HLODSystem
             
             for (int i = 0; i < info.WorkingObjects.Count; ++i)
             {
-                var materials = info.WorkingObjects[i].Materials;
-                for (int m = 0; m < materials.Count; ++m)
+                int m = -1;
+                foreach (var mat in info.WorkingObjects[i].Materials)
                 {
+                    ++m;
                     var mesh = info.WorkingObjects[i].Mesh;
                     if (mesh == null)
                         continue;
@@ -67,13 +68,13 @@ namespace Unity.HLODSystem
                     combineInfo.Mesh = mesh;
                     combineInfo.MeshIndex = m;
 
-                    if (combineInfos.ContainsKey(materials[m].Identifier) == false)
+                    if (combineInfos.ContainsKey(mat.Identifier) == false)
                     {
-                        combineInfos.Add(materials[m].Identifier, new List<MeshCombiner.CombineInfo>());
-                        materialTable.Add(materials[m].Identifier, materials[m]);
+                        combineInfos.Add(mat.Identifier, new List<MeshCombiner.CombineInfo>());
+                        materialTable.Add(mat.Identifier, mat);
                     }
                     
-                    combineInfos[materials[m].Identifier].Add(combineInfo);
+                    combineInfos[mat.Identifier].Add(combineInfo);
                 }
             }
 
@@ -108,12 +109,11 @@ namespace Unity.HLODSystem
                         uv5s, uv6s, uv7s, uv8s,
 #endif // UNITY_8UV_SUPPORT
                         colors, triangles);
-                    WorkingObject combinedObject = new WorkingObject(Allocator.Persistent);
+                    WorkingObject combinedObject = new WorkingObject(Allocator.Persistent, combinedMesh);
                     WorkingMaterial material = materialTable[pair.Key].Clone();
 
                     combinedMesh.name = info.Name + "_Mesh" + pair.Key;
                     combinedObject.Name = info.Name;
-                    combinedObject.SetMesh(combinedMesh);
                     combinedObject.Materials.Add(material);
 
                     combinedObjects.Add(combinedObject);

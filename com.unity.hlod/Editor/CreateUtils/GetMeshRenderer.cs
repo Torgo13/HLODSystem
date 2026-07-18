@@ -21,23 +21,23 @@ namespace Unity.HLODSystem
             {
                 get { return m_resultMeshRenderers; }
             }
-            
+
             public MeshRendererCalculator(List<GameObject> targetGameObjects)
             {
                 for (int oi = 0; oi < targetGameObjects.Count; ++oi)
                 {
                     var target = targetGameObjects[oi];
                     
-                    target.GetComponentsInChildren<HLODMeshSetter>(m_meshSetters);
-                    target.GetComponentsInChildren<MeshRenderer>(m_meshRenderers);
-                    target.GetComponentsInChildren<LODGroup>(m_lodGroups);
+                    m_meshSetters.AddRange(target.GetComponentsInChildren<HLODMeshSetter>());
+                    m_meshRenderers.AddRange(target.GetComponentsInChildren<MeshRenderer>());
+                    m_lodGroups.AddRange(target.GetComponentsInChildren<LODGroup>());
                 }
 
                 RemoveDisabled(m_meshSetters);
                 RemoveDisabled(m_lodGroups);
                 RemoveDisabled(m_meshRenderers);
             }
-            
+
             public MeshRendererCalculator(GameObject target)
             {
                 target.GetComponentsInChildren<HLODMeshSetter>(m_meshSetters);
@@ -99,7 +99,7 @@ namespace Unity.HLODSystem
             private void AddResultFromMeshSetters(HLODMeshSetter setter, float minObjectSize, int level)
             {
                 var group = setter.FindGroup(level);
-                
+
                 //If group is null, there is no MeshSetting for current level.
                 if (group == null)
                     return;
@@ -138,15 +138,11 @@ namespace Unity.HLODSystem
 
             private void RemoveUnderMeshSetters(HLODMeshSetter setter)
             {
-                var lodGroups = new List<LODGroup>();
-                var meshRenderers = new List<MeshRenderer>();
-                setter.GetComponentsInChildren<LODGroup>(lodGroups);
-                setter.GetComponentsInChildren<MeshRenderer>(meshRenderers);
-                m_lodGroups.RemoveAll(lodGroups);
-                m_meshRenderers.RemoveAll(meshRenderers);
+                m_lodGroups.RemoveAll(setter.GetComponentsInChildren<LODGroup>());
+                m_meshRenderers.RemoveAll(setter.GetComponentsInChildren<MeshRenderer>());
             }
 
-            
+
             //enabled is not Component variable.
             //So we can not make this to Generic function.
             static
@@ -165,7 +161,7 @@ namespace Unity.HLODSystem
                     i -= 1;
                 }
             }
-            
+
             static
             private void RemoveDisabled(List<LODGroup> componentList)
             {
@@ -182,7 +178,7 @@ namespace Unity.HLODSystem
                     i -= 1;
                 }
             }
-            
+
             static
             private void RemoveDisabled(List<MeshRenderer> componentList)
             {
@@ -206,7 +202,7 @@ namespace Unity.HLODSystem
             calculator.Calculate(minObjectSize, level);
             return calculator.ResultMeshRenderers;
         }
-        
+
         public static List<MeshRenderer> GetMeshRenderers(GameObject gameObject, float minObjectSize, int level)
         {
             MeshRendererCalculator calculator = new MeshRendererCalculator(gameObject);

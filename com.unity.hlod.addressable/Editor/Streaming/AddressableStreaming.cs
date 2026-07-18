@@ -55,6 +55,83 @@ namespace Unity.HLODSystem.Streaming
                     SupportTextureFormatIndex[SupportTextureFormats[i]] = i;
                 }
             }
+
+            #region MenuItem
+            [MenuItem("Window/HLOD/Terrain/Add TerrainHLOD")]
+            public static void AddTerrainHLOD()
+            {
+                foreach (var terrain in Object.FindObjectsByType<Terrain>(FindObjectsSortMode.None))
+                {
+                    if (terrain.TryGetComponent(out TerrainHLOD hlod))
+                        continue;
+
+                    hlod = terrain.gameObject.AddComponent<TerrainHLOD>();
+                    hlod.TerrainData = terrain.terrainData;
+                    //hlod.DestroyTerrain = false;
+                    hlod.ChunkSize = 64;
+
+                    hlod.SimplifierType = typeof(Simplifier.UnityMeshSimplifier);
+
+                    hlod.MaterialGUID = "1ac047a8cfbb6ba44a61a0cca102c8d3";
+                    hlod.MaterialLowGUID = hlod.MaterialGUID;
+                    hlod.TextureSize = 256;
+
+                    hlod.UseNormal = true;
+                    //hlod.UseMask = true;
+                    hlod.AlbedoPropertyName = "_BaseMap";
+                    hlod.NormalPropertyName = "_BumpMap";
+                    hlod.MaskPropertyName = "_DetailMask";
+                    
+                    hlod.StreamingType = typeof(AddressableStreaming);
+                    dynamic options = hlod.StreamingOptions;
+                    string path = Application.dataPath;
+                    path = "Assets" + path.Substring(Application.dataPath.Length);
+                    path = path.Replace('\\', '/');
+                    options.OutputDirectory = path.EndsWith('/')
+                        ? path + "Terrains/"
+                        : path + "/Terrains/";
+
+                    options.AddressablesGroupName = hlod.TerrainData.name;
+                }
+            }
+
+            [MenuItem("Window/HLOD/Terrain/Build All")]
+            public static void BuildAll()
+            {
+                _ = CoroutineRunner.RunCoroutine(BuildAllAsync());
+            }
+
+            private static System.Collections.IEnumerator BuildAllAsync()
+            {
+                var terrainHLODs = Object.FindObjectsByType<TerrainHLOD>(
+                    FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+                
+                var stopwatch = new System.Diagnostics.Stopwatch();
+                stopwatch.Start();
+                
+                int i = 0;
+                foreach (var hlod in terrainHLODs)
+                {
+                    yield return TerrainHLODCreator.Create(hlod);
+                    Debug.Log($"{++i / (float)terrainHLODs.Length:P0} in {stopwatch.Elapsed.Minutes} minutes." +
+                        $"Remaining: {(terrainHLODs.Length - i) * stopwatch.Elapsed.Minutes / (float)i} minutes.");
+                }
+            }
+            
+            [MenuItem("Window/HLOD/Terrain/Destroy All")]
+            public static void DestroyAll()
+            {
+                _ = CoroutineRunner.RunCoroutine(DestroyAllAsync());
+            }
+
+            private static System.Collections.IEnumerator DestroyAllAsync()
+            {
+                foreach (var hlod in Object.FindObjectsByType<TerrainHLOD>(FindObjectsSortMode.None))
+                {
+                    yield return TerrainHLODCreator.Destroy(hlod);
+                }
+            }
+            #endregion // MenuItem
         }
         
         [InitializeOnLoadMethod]
@@ -629,9 +706,14 @@ namespace Unity.HLODSystem.Streaming
             for (int gi = 0; gi < settings.groups.Count; ++gi)
             {
                 var group = settings.groups[gi];
+                if (group == null || group.entries == null)
+                    continue;
 
                 foreach (var entry in group.entries)
                 {
+                    if (entry == null)
+                        continue;
+                    
                     if (entry.guid == guid)
                         return true;
                 }
@@ -649,7 +731,7 @@ namespace Unity.HLODSystem.Streaming
                     return settings.groups[i];
             }
 
-            var schemas = new List<AddressableAssetGroupSchema>();
+            List<AddressableAssetGroupSchema> schemas = new List<AddressableAssetGroupSchema>();
 
             ContentUpdateGroupSchema contentUpdateGroupSchema = ScriptableObject.CreateInstance<ContentUpdateGroupSchema>();
             BundledAssetGroupSchema bundledAssetGroupSchema = ScriptableObject.CreateInstance<BundledAssetGroupSchema>();

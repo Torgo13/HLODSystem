@@ -138,9 +138,10 @@ namespace Unity.HLODSystem
             get { return m_convertedPrefabObjects; }
         }
 
-        public List<HLODControllerBase> GetHLODControllerBases(
-            List<HLODControllerBase> controllerBases)
+        public List<HLODControllerBase> GetHLODControllerBases()
         {
+            List<HLODControllerBase> controllerBases = new List<HLODControllerBase>(m_generatedObjects.Count);
+
             foreach (Object obj in m_generatedObjects)
             {
                 var controllerBase = obj as HLODControllerBase;
@@ -160,17 +161,12 @@ namespace Unity.HLODSystem
             }
             return controllerBases;
         }
-        
-        public Bounds GetBounds(
-            List<Renderer>? renderers = null)
+
+        public Bounds GetBounds()
         {
             Bounds ret = new Bounds();
-            if (renderers == null)
-                renderers = new List<Renderer>();
-            else
-                renderers.Clear();
-            GetComponentsInChildren<Renderer>(renderers);
-            if (renderers.Count == 0)
+            var renderers = GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0)
             {
                 ret.center = Vector3.zero;
                 ret.size = Vector3.zero;
@@ -178,7 +174,7 @@ namespace Unity.HLODSystem
             }
 
             Bounds bounds = Utils.BoundsUtils.CalcLocalBounds(renderers[0], transform);
-            for (int i = 1; i < renderers.Count; ++i)
+            for (int i = 1; i < renderers.Length; ++i)
             {
                 bounds.Encapsulate(Utils.BoundsUtils.CalcLocalBounds(renderers[i], transform));
             }

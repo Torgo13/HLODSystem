@@ -48,10 +48,17 @@ namespace Unity.HLODSystem
                 set { m_name = value; }
                 get { return m_name; }
             }
+            
+            private static byte[] ArrayToBytes<T>(NativeArray<T> arr)
+                where T : unmanaged
+                => ArrayToBytes(arr.AsReadOnlySpan());
 
-            private static byte[] ArrayToBytes<T>(T[] arr)
-                where T : struct
+            private static byte[] ArrayToBytes<T>(ReadOnlySpan<T> arr)
+                where T : unmanaged
             {
+#if OPTIMISATION
+                return MemoryMarshal.AsBytes(arr).ToArray();
+#else
                 int dataSize = Marshal.SizeOf<T>();
                 byte[] buffer = new byte[dataSize * arr.Length];
 
@@ -65,10 +72,54 @@ namespace Unity.HLODSystem
                 Marshal.FreeHGlobal(ptr);
 
                 return buffer;
+#endif // OPTIMISATION
             }
 
+#if UNUSED
+            private List<T> BytesToList<T>(Byte[] bytes,
+                List<T> list)
+                where T : unmanaged
+            {
+                int dataSize = Marshal.SizeOf<T>();
+                int length = bytes.Length / dataSize;
+                list.Clear();
+                if (list.Capacity < length)
+                    list.Capacity = length;
+
+                IntPtr ptr = Marshal.AllocHGlobal(dataSize);
+                for (int i = 0; i < length; ++i)
+                {
+                    Marshal.Copy(bytes, i * dataSize, ptr, dataSize);
+                    list.Add(Marshal.PtrToStructure<T>(ptr));
+                }
+
+                Marshal.FreeHGlobal(ptr);
+
+                return list;
+            }
+#endif // UNUSED
+
+#if OPTIMISATION
+            private List<T> BytesToList<T>(ReadOnlySpan<byte> bytes,
+                List<T> list)
+                where T : unmanaged
+            {
+                var span = MemoryMarshal.Cast<byte, T>(bytes);
+
+                list.EnsureCount(span.Length);
+                span.CopyTo(list.AsSpan());
+
+                return list;
+            }
+            
+            private T[] BytesToArray<T>(ReadOnlySpan<byte> bytes)
+                where T : unmanaged
+            {
+                return MemoryMarshal.Cast<byte, T>(bytes).ToArray();
+            }
+#else
             private T[] BytesToArray<T>(Byte[] bytes)
-                where T : struct
+                where T : unmanaged
             {
                 int dataSize = Marshal.SizeOf<T>();
                 T[] array = new T[bytes.Length / dataSize];
@@ -84,27 +135,28 @@ namespace Unity.HLODSystem
 
                 return array;
             }
+#endif // OPTIMISATION
 
             public void From(WorkingMesh mesh)
             {
                 m_name = mesh.name;
 
-                m_vertices = ArrayToBytes(mesh.vertices);
-                m_normals = ArrayToBytes(mesh.normals);
-                m_tangents = ArrayToBytes(mesh.tangents);
-                m_uvs = ArrayToBytes(mesh.uv);
-                m_uvs2 = ArrayToBytes(mesh.uv2);
-                m_uvs3 = ArrayToBytes(mesh.uv3);
-                m_uvs4 = ArrayToBytes(mesh.uv4);
+                m_vertices = ArrayToBytes(mesh.Vertices);
+                m_normals = ArrayToBytes(mesh.Normals);
+                m_tangents = ArrayToBytes(mesh.Tangents);
+                m_uvs = ArrayToBytes(mesh.UV);
+                m_uvs2 = ArrayToBytes(mesh.UV2);
+                m_uvs3 = ArrayToBytes(mesh.UV3);
+                m_uvs4 = ArrayToBytes(mesh.UV4);
 #if UNITY_8UV_SUPPORT
-                m_uvs5 = ArrayToBytes(mesh.uv5);
-                m_uvs6 = ArrayToBytes(mesh.uv6);
-                m_uvs7 = ArrayToBytes(mesh.uv7);
-                m_uvs8 = ArrayToBytes(mesh.uv8);
+                m_uvs5 = ArrayToBytes(mesh.UV5);
+                m_uvs6 = ArrayToBytes(mesh.UV6);
+                m_uvs7 = ArrayToBytes(mesh.UV7);
+                m_uvs8 = ArrayToBytes(mesh.UV8);
 #endif // UNITY_8UV_SUPPORT
-                m_colors = ArrayToBytes(mesh.colors);
+                m_colors = ArrayToBytes(mesh.Colors);
                 if (m_indices == null)
-                    m_indices = new List<int[]>();
+                    m_indices = new List<int[]>(mesh.subMeshCount);
                 else
                     m_indices.Clear();
                 for (int i = 0; i < mesh.subMeshCount; ++i)
@@ -117,9 +169,27 @@ namespace Unity.HLODSystem
             {
                 Mesh mesh = new Mesh();
                 mesh.name = m_name;
-                if (m_vertices.Length > 65535)
+                if (m_vertices.Length >= ushort.MaxValue * 3 * sizeof(float))
                     mesh.indexFormat = IndexFormat.UInt32;
 
+#if OPTIMISATION
+                var v2 = new List<Vector2>();
+                var v3 = new List<Vector3>();
+                mesh.SetVertices(BytesToList<Vector3>(m_vertices, v3));
+                mesh.SetNormals(BytesToList<Vector3>(m_normals, v3));
+                mesh.tangents = BytesToArray<Vector4>(m_tangents);
+                mesh.SetUVs(0, BytesToList<Vector2>(m_uvs, v2));
+                mesh.SetUVs(1, BytesToList<Vector2>(m_uvs2, v2));
+                mesh.SetUVs(2, BytesToList<Vector2>(m_uvs3, v2));
+                mesh.SetUVs(3, BytesToList<Vector2>(m_uvs4, v2));
+#if UNITY_8UV_SUPPORT
+                mesh.SetUVs(4, BytesToList<Vector2>(m_uvs5, v2));
+                mesh.SetUVs(5, BytesToList<Vector2>(m_uvs6, v2));
+                mesh.SetUVs(6, BytesToList<Vector2>(m_uvs7, v2));
+                mesh.SetUVs(7, BytesToList<Vector2>(m_uvs8, v2));
+#endif // UNITY_8UV_SUPPORT
+                mesh.colors = BytesToArray<Color>(m_colors);
+#else
                 mesh.vertices = BytesToArray<Vector3>(m_vertices);
                 mesh.normals = BytesToArray<Vector3>(m_normals);
                 mesh.tangents = BytesToArray<Vector4>(m_tangents);
@@ -134,6 +204,7 @@ namespace Unity.HLODSystem
                 mesh.uv8 = BytesToArray<Vector2>(m_uvs8);
 #endif // UNITY_8UV_SUPPORT
                 mesh.colors = BytesToArray<Color>(m_colors);
+#endif // OPTIMISATION
 
                 mesh.subMeshCount = m_indices.Count;
                 for (int i = 0; i < m_indices.Count; ++i)
@@ -367,15 +438,17 @@ namespace Unity.HLODSystem
 
             public void From(WorkingObject obj)
             {
+                if (obj.Mesh == null)
+                    return;
                 Name = obj.Name;
                 m_mesh.From(obj.Mesh);
                 m_materialIds.Clear();
                 m_materialNames.Clear();
                 m_lightProbeUsage = obj.LightProbeUsage;
-                for (int i = 0; i < obj.Materials.Count; ++i)
+                foreach (WorkingMaterial wm in obj.Materials)
                 {
-                    m_materialIds.Add(obj.Materials[i].Guid);
-                    m_materialNames.Add(obj.Materials[i].Name);
+                    m_materialIds.Add(wm.Guid);
+                    m_materialNames.Add(wm.Name);
                 }
             }
         }
@@ -657,29 +730,23 @@ namespace Unity.HLODSystem
         }
         public void AddFromGameObject(GameObject go)
         {
-            using (WorkingObject wo = new WorkingObject(Allocator.Persistent))
+            if (!go.TryGetComponent(out MeshRenderer mr)
+                || !go.TryGetComponent(out MeshFilter filter))
+                return;
+
+            var sharedMesh = filter.sharedMesh;
+            if (sharedMesh ==null)
+                return;
+            
+            using (WorkingObject wo = new WorkingObject(Allocator.Persistent, mr, sharedMesh))
             {
-                var mr = go.GetComponent<MeshRenderer>();
-                if (mr == null)
-                    return;
-
-                if (!go.TryGetComponent(out MeshFilter filter))
-                    return;
-
-                var sharedMesh = filter.sharedMesh;
-                if (sharedMesh == null)
-                    return;
-
-                wo.FromRenderer(mr, sharedMesh);
                 wo.Name = go.name;
 
                 SerializableObject so = new SerializableObject();
                 so.From(wo);
 
-                for (int mi = 0; mi < wo.Materials.Count; ++mi)
+                foreach (WorkingMaterial wm in wo.Materials)
                 {
-                    WorkingMaterial wm = wo.Materials[mi];
-
                     //Prevent duplication
                     if (GetMaterial(wm.Guid) != null)
                         continue;
@@ -711,10 +778,8 @@ namespace Unity.HLODSystem
 
         private void AddFromWorkingMaterials(IList<WorkingMaterial> wmList)
         {
-            for (int i = 0; i < wmList.Count; ++i)
+            foreach (WorkingMaterial wm in wmList)
             {
-                WorkingMaterial wm = wmList[i];
-
                 //Prevent duplication
                 if (GetMaterial(wm.Guid) != null)
                     continue;
@@ -724,7 +789,7 @@ namespace Unity.HLODSystem
                     return;
 
                 SerializableMaterial sm = new SerializableMaterial();
-                sm.From(wmList[i]);
+                sm.From(wm);
 
                 string[] textureNames = wm.GetTextureNames();
                 for (int ti = 0; ti < textureNames.Length; ++ti)

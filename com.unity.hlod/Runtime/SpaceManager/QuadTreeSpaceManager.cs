@@ -17,8 +17,8 @@ namespace Unity.HLODSystem.SpaceManager
             }
             else
             {
-                float halfAngle = Mathf.Tan(Mathf.Deg2Rad * cam.fieldOfView * 0.5F);
-                preRelative = 0.5f / halfAngle;
+                double halfAngle = System.Math.Tan(Mathf.Deg2Rad * 0.5 * cam.fieldOfView);
+                preRelative = (float)(0.5 / halfAngle);
             }
             preRelative = preRelative * QualitySettings.lodBias;
             camPosition = hlodTransform.worldToLocalMatrix.MultiplyPoint(cam.transform.position);

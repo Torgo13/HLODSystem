@@ -20,37 +20,21 @@ namespace Unity.HLODSystem.Utils
         
         public void EnqueueMainThreadJob(Action job)
         {
-            lock (m_mainThreadJobs)
-            {
-                m_mainThreadJobs.Enqueue(job);
-            }
+            m_mainThreadJobs.Enqueue(job);
         }
 
         public void EnqueueJob(Action job)
         {
-            lock (m_jobs)
-            {
-                m_jobs.Enqueue(job);
-            }
+            m_jobs.Enqueue(job);
         }
 
         private Action? DequeueMainThreadJob()
         {
-            lock (m_mainThreadJobs)
-            {
-                if (m_mainThreadJobs.Count == 0)
-                    return null;
-                return m_mainThreadJobs.Dequeue();
-            }
+            return m_mainThreadJobs.TryDequeue(out Action? mainThreadJob) ? mainThreadJob : null;
         }
         private Action? DequeueJob()
         {
-            lock (m_jobs)
-            {
-                if (m_jobs.Count == 0)
-                    return null;
-                return m_jobs.Dequeue();
-            }
+            return m_jobs.TryDequeue(out Action? job) ? job : null;
         }
 
         
@@ -108,8 +92,10 @@ namespace Unity.HLODSystem.Utils
 
         private Worker[] m_workers;
         
-        private Queue<Action> m_mainThreadJobs = new Queue<Action>();
-        private Queue<Action> m_jobs = new Queue<Action>();
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Action> m_mainThreadJobs
+            = new System.Collections.Concurrent.ConcurrentQueue<Action>();
+        private readonly System.Collections.Concurrent.ConcurrentQueue<Action> m_jobs
+            = new System.Collections.Concurrent.ConcurrentQueue<Action>();
         
         #region worker
 

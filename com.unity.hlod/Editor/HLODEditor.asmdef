@@ -17,6 +17,11 @@
     "defineConstraints": [],
     "versionDefines": [
         {
+            "name": "Unity",
+            "expression": "2018.2",
+            "define": "UNITY_8UV_SUPPORT"
+        },
+        {
             "name": "com.unity.collections",
             "expression": "",
             "define": "USING_COLLECTIONS"

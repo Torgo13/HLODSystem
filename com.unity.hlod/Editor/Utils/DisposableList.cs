@@ -4,6 +4,84 @@ using System.Collections.Generic;
 
 namespace Unity.HLODSystem.Utils
 {
+    public sealed class DisposableBag<T> : IDisposable, IList<T>, ICollection<T>, IEnumerable<T>
+        where T : IDisposable
+    {
+        readonly System.Collections.Concurrent.ConcurrentBag<T> m_list
+            = new System.Collections.Concurrent.ConcurrentBag<T>();
+        
+        public T[] ToArray() => m_list.ToArray();
+
+        // ReSharper disable Unity.PerformanceAnalysis
+        public void Dispose()
+        {
+            foreach (var item in m_list)
+            {
+                item.Dispose();
+            }
+            
+            m_list.Clear();
+        }
+
+        public IEnumerator<T> GetEnumerator() => m_list.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => m_list.GetEnumerator();
+
+        public void Add(T item) => m_list.Add(item);
+
+        public void AddRange(IEnumerable<T> collection)
+        {
+            foreach (var item in collection)
+            {
+                m_list.Add(item);
+            }
+        }
+        
+        public void Clear() => m_list.Clear();
+
+        public bool Contains(T item)
+        {
+            foreach (var t in m_list)
+            {
+                if (t.Equals(item))
+                    return true;
+            }
+            
+            return false;
+        }
+
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Remove(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int Count => m_list.Count;
+        public bool IsReadOnly => false;
+        public int IndexOf(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Insert(int index, T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveAt(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        public T this[int index]
+        {
+            get => throw new NotImplementedException();
+            set => throw new NotImplementedException();
+        }
+    }
     
     public class DisposableList<T> : IDisposable, IList<T>, ICollection<T>, IEnumerable<T> 
         where T : IDisposable

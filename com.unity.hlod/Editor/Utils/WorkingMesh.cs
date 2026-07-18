@@ -417,7 +417,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_Normals.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     normalsCount = 0;
                 }
@@ -443,7 +443,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_Tangents.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     tangentsCount = 0;
                 }
@@ -469,7 +469,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uvCount = 0;
                 }
@@ -495,7 +495,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV2.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uv2Count = 0;
                 }
@@ -521,7 +521,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV3.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uv3Count = 0;
                 }
@@ -547,7 +547,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV4.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uv4Count = 0;
                 }
@@ -574,7 +574,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV5.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uv5Count = 0;
                 }
@@ -600,7 +600,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV6.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uv6Count = 0;
                 }
@@ -626,7 +626,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV7.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uv7Count = 0;
                 }
@@ -652,7 +652,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_UV8.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     uv8Count = 0;
                 }
@@ -679,7 +679,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_Colors.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     colorsCount = 0;
                 }
@@ -711,7 +711,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_BoneWeights.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     boneWeightsCount = 0;
                 }
@@ -737,7 +737,7 @@ namespace Unity.HLODSystem.Utils
             get { return m_Bindposes.AsArray().ToArray(); }
             set
             {
-                if (value == null || value.Length == 0)
+                if (value.Length == 0)
                 {
                     bindposesCount = 0;
                 }
@@ -1962,6 +1962,9 @@ namespace Unity.HLODSystem.Utils
             if (m_Triangles.IsCreated)
                 m_Triangles.Dispose();
 
+            if (m_detector.IsCreated)
+                return;
+            
             m_detector.Dispose();
         }
 

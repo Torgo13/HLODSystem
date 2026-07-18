@@ -32,7 +32,7 @@ namespace Unity.HLODSystem
             }
         }
 
-        public string? Name { set; get; }
+        public string Name { set; get; } = string.Empty;
         public SerializedProperty? Property { set; get; }
 
         public float EndPosition

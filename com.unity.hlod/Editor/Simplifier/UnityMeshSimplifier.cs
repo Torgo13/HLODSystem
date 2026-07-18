@@ -67,11 +67,12 @@ namespace Unity.HLODSystem.Simplifier
 #endif // OPTIMISATION
 
             meshSimplifier.SimplifyMesh(quality);
-            var subMeshIndices = new System.Collections.Generic.List<int>();
             int triCount = 0;
             for (int i = 0; i < meshSimplifier.SubMeshCount; ++i)
             {
-                triCount += meshSimplifier.GetSubMeshTriangles(i, subMeshIndices).Count;
+                var subMeshIndices = meshSimplifier.GetSubMeshTriangles(i);
+                triCount += subMeshIndices.Length;
+                subMeshIndices.Dispose();
             }
 
 #if OPTIMISATION
@@ -106,7 +107,9 @@ namespace Unity.HLODSystem.Simplifier
             nwm.subMeshCount = meshSimplifier.SubMeshCount;
             for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
             {
-                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh, subMeshIndices).AsReadOnlySpan(), submesh);
+                var subMeshIndices = meshSimplifier.GetSubMeshTriangles(submesh);
+                nwm.SetTriangles(subMeshIndices.AsReadOnlySpan(), submesh);
+                subMeshIndices.Dispose();
             }
 
             if (resultCallback != null)

@@ -223,8 +223,13 @@ namespace Unity.HLODSystem.Streaming
                 for (int ti = 0; ti < hlodMaterial.GetTextureCount(); ++ti)
                 {
                     var serializeTexture = hlodMaterial.GetTexture(ti);
+#if OPTIMISATION
+                    byte[] bytes = ImageConversion.EncodeArrayToPNG(serializeTexture.Bytes,
+                        serializeTexture.GraphicsFormat, (uint)serializeTexture.Width, (uint)serializeTexture.Height);
+#else
                     Texture2D texture = serializeTexture.To();
                     byte[] bytes = texture.EncodeToPNG();
+#endif // OPTIMISATION
                     string textureFilename = $"{filenamePrefix}_{mat.name}_{serializeTexture.TextureName}.png";
                     File.WriteAllBytes(textureFilename, bytes);
 
