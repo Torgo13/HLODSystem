@@ -92,6 +92,99 @@ namespace Unity.HLODSystem.Streaming
                         : path + "/Terrains/";
 
                     options.AddressablesGroupName = hlod.TerrainData.name;
+
+                    #region Trees
+                    var data = hlod.TerrainData;
+                    //var detailPrototypes = data.detailPrototypes;
+                    TreeInstance[] treeInstances = data.treeInstances;
+                    TreePrototype[] treePrototypes = data.treePrototypes;
+                    Vector3 terrainScale = data.size;
+
+                    HashSet<string> names = new HashSet<string>(StringComparer.Ordinal);
+                    
+                    GameObject treesRoot = new GameObject(options.AddressablesGroupName);
+                    Transform treesRootTransform = treesRoot.transform;
+                    treesRootTransform.position = terrain.transform.position;
+                    foreach (var treeInstance in treeInstances)
+                    {
+                        TreePrototype treePrototype = treePrototypes[treeInstance.prototypeIndex];
+                        
+                        Vector3 position = treeInstance.position;
+                        position.x *= terrainScale.x;
+                        position.y *= terrainScale.y;
+                        position.z *= terrainScale.z;
+                        
+                        Quaternion rotation = Quaternion.AngleAxis(treeInstance.rotation, Vector3.up);
+
+                        Transform parent;
+                        string name = treePrototype.prefab.name;
+                        if (names.Add(name))
+                        {
+                            GameObject go = new GameObject(name);
+                            
+                            HLOD hlodComponent = go.AddComponent<HLOD>();
+                            //hlodComponent.m_ChunkSize = 32;
+                            hlodComponent.SimplifierType = typeof(Simplifier.UnityMeshSimplifier);
+                            hlodComponent.StreamingType = typeof(AddressableStreaming);
+                            options = hlodComponent.StreamingOptions;
+                            options.AddressablesGroupName = name;
+                            options.OutputDirectory = path.EndsWith('/')
+                                ? path + "Terrains/"
+                                : path + "/Terrains/";
+                            
+                            Transform goTransform = go.transform;
+                            goTransform.SetParent(treesRootTransform, worldPositionStays: false);
+                            parent = goTransform;
+                        }
+                        else
+                        {
+                            parent = treesRootTransform.Find(name);
+                        }
+                        
+                        GameObject tree = Object.Instantiate(treePrototype.prefab,
+                            position, rotation,
+                            new InstantiateParameters
+                        {
+                            parent = parent,
+                            originalImmutable = true,
+                            worldSpace = false,
+                        });
+
+                        if (tree.TryGetComponent(out LODGroup lodGroup))
+                        {
+                            Object.DestroyImmediate(lodGroup);
+                        }
+
+                        Transform treeTransform = tree.transform;
+                        for (int j = treeTransform.childCount - 1; j >= 0; --j)
+                        {
+                            Transform child = treeTransform.GetChild(j);
+                            name = child.name;
+                            if (!name.EndsWith('0') && name.Contains("LOD", StringComparison.Ordinal))
+                            {
+                                Object.DestroyImmediate(child.gameObject);
+                            }
+                        }
+
+                        treeTransform.localScale = new Vector3(treeInstance.widthScale, treeInstance.heightScale,
+                            treeInstance.widthScale);
+                    }
+
+                    #region Sort
+                    Transform[] allTrees = new Transform[treesRootTransform.childCount];
+                    int i;
+                    for (i = 0; i < allTrees.Length; i++)
+                    {
+                        allTrees[i] = treesRootTransform.GetChild(i);
+                    }
+
+                    i = 0;
+                    foreach (var tree in System.Linq.Enumerable.OrderBy(allTrees, go => go.name, StringComparer.Ordinal))
+                    {
+                        tree.SetSiblingIndex(i++);
+                    }
+                    #endregion // Sort
+                    #endregion // Trees
                 }
             }
 
@@ -349,8 +442,9 @@ namespace Unity.HLODSystem.Streaming
         {
             Dictionary<string, HLODData.SerializableMaterial> hlodAllMaterials = new Dictionary<string, HLODData.SerializableMaterial>();
             //collect all materials
-            foreach (var hlodData in hlodDatas.Values)
+            foreach (var hlodDataKVPair in hlodDatas)
             {
+                var hlodData = hlodDataKVPair.Value;
                 var hlodMaterials = hlodData.GetMaterials();
                 for (int mi = 0; mi < hlodMaterials.Count; ++mi)
                 {

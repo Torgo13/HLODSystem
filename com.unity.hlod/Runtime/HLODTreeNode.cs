@@ -290,7 +290,7 @@ namespace Unity.HLODSystem
 
                 m_controller.GetLowObject(id, Level, m_distance, o =>
                 {
-                    o.LoadedObject.SetActive(false);
+                    o.LoadedObject!.SetActive(false);
                     m_loadedLowObjects.Add(id, o);
                 });
             }
@@ -319,11 +319,27 @@ namespace Unity.HLODSystem
 
         void OnExitedLow()
         {
+#if UNITY_6000_3_OR_NEWER
+            var gameObjects = new Collections.NativeArray<EntityId>(m_lowObjects.Count,
+                Collections.Allocator.Temp,
+                Collections.NativeArrayOptions.UninitializedMemory);
+
+            int i = 0;
+            foreach (var item in m_lowObjects)
+            {
+                gameObjects[i++] = item.Value.LoadedObject!.GetEntityId();
+                m_controller.ReleaseLowObject(item.Value);
+            }
+            
+            GameObject.SetGameObjectsActive(gameObjects, false);
+            gameObjects.Dispose();
+#else
             foreach (var item in m_lowObjects)
             {
                 item.Value.LoadedObject.SetActive(false);
                 m_controller.ReleaseLowObject(item.Value);
             }
+#endif // UNITY_6000_3_OR_NEWER
             m_lowObjects.Clear();
         }
 
@@ -350,7 +366,7 @@ namespace Unity.HLODSystem
 
                 m_controller.GetHighObject(id, Level, m_distance, (o =>
                 {
-                    o.LoadedObject.SetActive(false);
+                    o.LoadedObject!.SetActive(false);
                     if (m_userDataSerializer != null)
                     {
                         m_userDataSerializer.DeserializeUserData(m_controller, id, o.LoadedObject);
@@ -392,12 +408,28 @@ namespace Unity.HLODSystem
 
         void OnExitedHigh()
         {
+#if UNITY_6000_3_OR_NEWER
+            var gameObjects = new Collections.NativeArray<EntityId>(m_highObjects.Count,
+                Collections.Allocator.Temp,
+                Collections.NativeArrayOptions.UninitializedMemory);
+            
+            int j = 0;
+            foreach (var item in m_highObjects)
+            {
+                gameObjects[j++] = item.Value.LoadedObject!.GetEntityId();
+                m_controller.ReleaseHighObject(item.Value);
+            }
+            
+            GameObject.SetGameObjectsActive(gameObjects, false);
+            gameObjects.Dispose();
+#else
             foreach (var item in m_highObjects)
             {
                 if (item.Value.LoadedObject != null)
                     item.Value.LoadedObject.SetActive(false);
                 m_controller.ReleaseHighObject(item.Value);
             }
+#endif // UNITY_6000_3_OR_NEWER
             m_highObjects.Clear();
             
             for (int i = 0; i < m_childTreeNodeIds.Count; ++i)
@@ -420,7 +452,7 @@ namespace Unity.HLODSystem
         {
             m_distance = m_spaceManager.GetDistanceSqure(m_bounds) - m_boundsLength;
 
-            var beforeState = m_fsm.CurrentState;
+            State beforeState;
 
             if (mode == HLODControllerBase.Mode.DisableHLOD)
             {
@@ -515,6 +547,25 @@ namespace Unity.HLODSystem
                 m_isVisibleHierarchy = m_isVisible;    
             }
 
+#if UNITY_6000_3_OR_NEWER
+            var gameObjects = new Collections.NativeArray<EntityId>(m_highObjects.Count + m_lowObjects.Count,
+                Collections.Allocator.Temp,
+                Collections.NativeArrayOptions.UninitializedMemory);
+
+            int i = 0;
+            foreach (var item in m_highObjects)
+            {
+                gameObjects[i++] = item.Value.LoadedObject!.GetEntityId();
+            }
+            
+            foreach (var item in m_lowObjects)
+            {
+                gameObjects[i++] = item.Value.LoadedObject!.GetEntityId();
+            }
+            
+            GameObject.SetGameObjectsActive(gameObjects, m_isVisibleHierarchy);
+            gameObjects.Dispose();
+#else
             foreach (var item in m_highObjects)
             {
                 if (item.Value.LoadedObject != null)
@@ -526,6 +577,7 @@ namespace Unity.HLODSystem
                 if (item.Value.LoadedObject != null)
                     item.Value.LoadedObject.SetActive(m_isVisibleHierarchy);
             }
+#endif // UNITY_6000_3_OR_NEWER
         }
 
     }

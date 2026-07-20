@@ -27,10 +27,7 @@ namespace Unity.HLODSystem.DebugWindow
         private List<HLODItemData> m_hlodItemDatas = new List<HLODItemData>();
         private HierarchyItem? m_selectedItem;
 
-#if OPTIMISATION_NULL
-#else
-        private RadioButtonGroup m_drawModeUI;
-#endif // OPTIMISATION_NULL
+        private RadioButtonGroup? m_drawModeUI;
 
         [SerializeField]
         private bool m_drawSelected = true;
@@ -70,9 +67,6 @@ namespace Unity.HLODSystem.DebugWindow
             var highlightRenderedUI = root.Q<Toggle>("HighlightRendered");
             highlightRenderedUI.Bind(serializedObject);
             
-#if OPTIMISATION_NULL
-            var
-#endif // OPTIMISATION_NULL
             m_drawModeUI = root.Q<RadioButtonGroup>("DrawMode");
             m_drawModeUI.choices = new[]
             {

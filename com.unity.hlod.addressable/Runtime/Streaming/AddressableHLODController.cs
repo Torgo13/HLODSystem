@@ -83,6 +83,27 @@ namespace Unity.HLODSystem.Streaming
 
         public override void Install()
         {
+#if UNITY_6000_3_OR_NEWER
+            var gameObjects = new Collections.NativeArray<EntityId>(m_highObjects.Count,
+                Collections.Allocator.Temp,
+                Collections.NativeArrayOptions.UninitializedMemory);
+
+            int j = 0;
+            for (int i = 0; i < m_highObjects.Count; ++i)
+            {
+                if (!string.IsNullOrEmpty(m_highObjects[i].Address))
+                {
+                    DestroyObject(m_highObjects[i]);
+                }
+                else
+                {
+                    gameObjects[j++] = m_highObjects[i].GameObject!.GetEntityId();
+                }
+            }
+            
+            GameObject.SetGameObjectsActive(gameObjects.GetSubArray(start: 0, j), false);
+            gameObjects.Dispose();
+#else
             for (int i = 0; i < m_highObjects.Count; ++i)
             {
                 if (string.IsNullOrEmpty(m_highObjects[i].Address) == false)
@@ -94,6 +115,7 @@ namespace Unity.HLODSystem.Streaming
                     m_highObjects[i].GameObject!.SetActive(false);
                 }
             }
+#endif // UNITY_6000_3_OR_NEWER
         }
 
         public int AddHighObject(string address, GameObject origin)
@@ -147,9 +169,9 @@ namespace Unity.HLODSystem.Streaming
 
         public override void LoadHighObject(int id, Action<GameObject>? loadDoneCallback)
         {
-            if (m_highObjects[id].GameObject != null)
+            var gameObject = m_highObjects[id].GameObject;
+            if (gameObject != null)
             {
-                var gameObject = m_highObjects[id].GameObject!;
 #if UNITY_6000_3_OR_NEWER
                 ChangeLayersRecursively(gameObject, m_hlodLayerIndex);
 #else
@@ -159,12 +181,9 @@ namespace Unity.HLODSystem.Streaming
             }
             else
             {
-                var callbacks = new List<Action<GameObject>?>();
-                callbacks.Add(loadDoneCallback);
-                callbacks.Add(o => { HighObjectCreated?.Invoke(o); });
-
                 LoadInfo loadInfo = Load(m_highObjects[id].Address, m_highObjects[id].Parent,
-                    m_highObjects[id].Position, m_highObjects[id].Rotation, m_highObjects[id].Scale, callbacks);
+                    m_highObjects[id].Position, m_highObjects[id].Rotation, m_highObjects[id].Scale,
+                    loadDoneCallback, o => HighObjectCreated?.Invoke(o));
                 
                 m_highObjectLoadInfos.Add(id, loadInfo);
             }
@@ -172,11 +191,8 @@ namespace Unity.HLODSystem.Streaming
 
         public override void LoadLowObject(int id, Action<GameObject>? loadDoneCallback)
         {
-            var callbacks = new List<Action<GameObject>?>();
-            callbacks.Add(loadDoneCallback);
-
             LoadInfo loadInfo = Load(m_lowObjects[id], m_hlodMeshesRoot!.transform, Vector3.zero,
-                Quaternion.identity, Vector3.one, callbacks);
+                Quaternion.identity, Vector3.one, loadDoneCallback);
             
             m_lowObjectLoadInfos.Add(id, loadInfo);
         }
@@ -191,12 +207,10 @@ namespace Unity.HLODSystem.Streaming
             }
             else
             {
-                if (m_highObjectLoadInfos.TryGetValue(id, out var loadInfo))
+                if (m_highObjectLoadInfos.Remove(id, out var loadInfo))
                 {
-                    DestoryObject(loadInfo.Instance);
+                    DestroyObject(loadInfo);
                     Unload(loadInfo);
-
-                    m_highObjectLoadInfos.Remove(id);
                 }
 #if ZERO
                 else
@@ -211,13 +225,10 @@ namespace Unity.HLODSystem.Streaming
 
         public override void UnloadLowObject(int id)
         {
-            if (m_lowObjectLoadInfos.TryGetValue(id, out var loadInfo))
+            if (m_lowObjectLoadInfos.Remove(id, out var loadInfo))
             {
-                DestoryObject(loadInfo.Instance);
+                DestroyObject(loadInfo);
                 Unload(loadInfo);
-                
-                m_lowObjectLoadInfos.Remove(id);
-                
             }
 #if ZERO
             else
@@ -226,6 +237,12 @@ namespace Unity.HLODSystem.Streaming
             }
 #endif // ZERO
         }
+
+        private static void DestroyObject(ChildObject childObject)
+            => DestoryObject(childObject.GameObject);
+
+        private static void DestroyObject(LoadInfo loadInfo)
+            => DestoryObject(loadInfo.Instance);
 
         static
         private void DestoryObject(Object? obj)
@@ -241,7 +258,7 @@ namespace Unity.HLODSystem.Streaming
         }
 
         private LoadInfo Load(string address, Transform? parent, Vector3 localPosition, Quaternion localRotation,
-            Vector3 localScale, List<Action<GameObject>?> callbacks)
+            Vector3 localScale, Action<GameObject>? callback0 = null, Action<GameObject>? callback1 = null)
         {
             LoadInfo loadInfo = new LoadInfo();
             loadInfo.Key = address;
@@ -265,20 +282,24 @@ namespace Unity.HLODSystem.Streaming
                 ChangeLayersRecursively(gameObject.transform, m_hlodLayerIndex);
 #endif // UNITY_6000_3_OR_NEWER
                 loadInfo.Instance = gameObject;
-                foreach (var callback in callbacks)
-                {
-                    callback?.Invoke(gameObject);
-                }
+                callback0?.Invoke(gameObject);
+                callback1?.Invoke(gameObject);
             };
 
             if (m_customLoader == null)
             {
                 loadInfo.LoadFromCustom = false;
+#if OPTIMISATION
+                loadInfo.Handle = Addressables.InstantiateAsync(address,
+                    new Vector3(0, -1024 * 1024, 0), Quaternion.identity,
+                    parent!, trackHandle: false);
+#else
                 loadInfo.Handle = Addressables.LoadAssetAsync<GameObject>(address);
+#endif // OPTIMISATION
 #if UNITY_6000_3_OR_NEWER
                 _ = LoadDoneActionAsync(loadInfo.Handle, loadInfo, m_hlodLayerIndex,
                     parent, localPosition, localRotation,
-                    localScale, callbacks, destroyCancellationToken);
+                    localScale, callback0, callback1, destroyCancellationToken);
 #else
                 loadInfo.Handle.Completed += handle =>
                 {
@@ -305,7 +326,7 @@ namespace Unity.HLODSystem.Streaming
         private static async Awaitable LoadDoneActionAsync(
             AsyncOperationHandle<GameObject> handle, LoadInfo loadInfo, int m_hlodLayerIndex,
             Transform? parent, Vector3 localPosition, Quaternion localRotation,
-            Vector3 localScale, List<Action<GameObject>?> callbacks,
+            Vector3 localScale, Action<GameObject>? callback0, Action<GameObject>? callback1,
             System.Threading.CancellationToken ct)
         {
             bool endOfFrame = false;
@@ -323,6 +344,8 @@ namespace Unity.HLODSystem.Streaming
 
             GameObject gameObject = handle.Result;
             gameObject.SetActive(false);
+#if OPTIMISATION
+#else
             var aio = InstantiateAsync(gameObject, new InstantiateParameters
                 { parent = parent, worldSpace = false, originalImmutable = true, });
             while (!ct.IsCancellationRequested && !aio.isDone)
@@ -339,16 +362,15 @@ namespace Unity.HLODSystem.Streaming
                 return;
 
             gameObject = result[0];
+#endif // OPTIMISATION
             var transformHandle = gameObject.transformHandle;
             transformHandle.SetLocalPositionAndRotation(localPosition, localRotation);
             transformHandle.localScale = localScale;
             ChangeLayersRecursively(gameObject, m_hlodLayerIndex);
 
             loadInfo.Instance = gameObject;
-            foreach (var callback in callbacks)
-            {
-                callback?.Invoke(gameObject);
-            }
+            callback0?.Invoke(gameObject);
+            callback1?.Invoke(gameObject);
         }
 #endif // UNITY_6000_3_OR_NEWER
 

@@ -474,12 +474,12 @@ namespace Unity.HLODSystem
             var vertices = mesh.VerticesList;
             var normals = mesh.NormalsList;
             var uvs = mesh.UVList;
-            vertices.Clear();
-            normals.Clear();
-            uvs.Clear();
-            vertices.Length = (heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x);
-            normals.Length = (heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x);
-            uvs.Length = (heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x);
+            vertices.ResizeUninitialized((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x));
+            normals.ResizeUninitialized((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x));
+            uvs.ResizeUninitialized((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x));
+            vertices.AsArray().AsSpan().Fill(default);
+            normals.AsArray().AsSpan().Fill(default);
+            uvs.AsArray().AsSpan().Fill(default);
 #else
             var vertices = new NativeArray<Vector3>((heightmap.Width - borderWidth2x) * (heightmap.Height - borderWidth2x),
                 allocator, options);
@@ -1300,7 +1300,7 @@ namespace Unity.HLODSystem
         {
             try
             {
-                using (var m_queue = new JobQueue(8))
+                using (var m_queue = new JobQueue(Mathf.Max(1, SystemInfo.processorCount / 2)))
                 {
                     Stopwatch sw = new Stopwatch();
 
@@ -1364,7 +1364,7 @@ namespace Unity.HLODSystem
 
                         List<SpaceNode> rootNodeList = splitter.CreateSpaceTree(m_hlod.GetBounds(), m_hlod.ChunkSize * 2.0f,
 #if OPTIMISATION
-                        m_hlod.transform, default(ReadOnlySpan<GameObject>), progress => { EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Create mesh", 0.25f * progress); });
+                        m_hlod.transform, default(ReadOnlySpan<GameObject>), progress => { EditorUtility.DisplayProgressBar("Bake HLOD", "Create mesh", 0.25f * progress); });
 #else
                         m_hlod.transform, null, progress => { });
 
@@ -1397,7 +1397,7 @@ namespace Unity.HLODSystem
 
                                 yield return new WaitForBranches(progress =>
                                 {
-                                    EditorUtility.DisplayCancelableProgressBar("Bake HLOD", "Simplify meshes",
+                                    EditorUtility.DisplayProgressBar("Bake HLOD", "Simplify meshes",
                                         0.25f + progress * 0.25f);
                                 });
 #else
@@ -1477,6 +1477,7 @@ namespace Unity.HLODSystem
                                         node.ParentNode = null;
 
                                         GameObject go = new GameObject(buildInfos[i].Name);
+                                        Transform goTransform = go.transform;
 
                                         for (int wi = 0; wi < info.WorkingObjects.Count; ++wi)
                                         {
@@ -1495,7 +1496,7 @@ namespace Unity.HLODSystem
                                             {
                                                 matName = $"{wi}_Mat";
                                                 targetGO = new GameObject(matName);
-                                                targetGO.transform.SetParent(go.transform, false);
+                                                targetGO.transform.SetParent(goTransform, false);
                                             }
 
                                             materials.Clear();
@@ -1531,7 +1532,7 @@ namespace Unity.HLODSystem
                                             mr.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
                                         }
 
-                                        go.transform.SetParent(m_hlod.transform, false);
+                                        goTransform.SetParent(m_hlod.transform, false);
                                         m_hlod.AddGeneratedResource(go);
 
                                         parent.Objects.Add(go);

@@ -26,8 +26,9 @@ namespace Unity.HLODSystem.Utils
             parameters.IsTrigger = collider.isTrigger;
             parameters.ContactOffset = collider.contactOffset;
 
-            if (collider is BoxCollider boxCollider)
+            if (collider as BoxCollider != null)
             {
+                var boxCollider = (BoxCollider)collider;
                 var size = boxCollider.size;
                 var center = boxCollider.center;
                 parameters.SizeX = size.x;
@@ -37,21 +38,24 @@ namespace Unity.HLODSystem.Utils
                 parameters.CenterY = center.y;
                 parameters.CenterZ = center.z;
             }
-            else if (collider is MeshCollider meshCollider)
+            else if (collider as MeshCollider != null)
             {
+                var meshCollider = (MeshCollider)collider;
                 parameters.SharedMeshPath = ObjectUtils.ObjectToPath(meshCollider.sharedMesh);
                 parameters.Convex = meshCollider.convex;
             }
-            else if (collider is SphereCollider sphereCollider)
+            else if (collider as SphereCollider != null)
             {
+                var sphereCollider = (SphereCollider)collider;
                 var center = sphereCollider.center;
                 parameters.CenterX = center.x;
                 parameters.CenterY = center.y;
                 parameters.CenterZ = center.z;
                 parameters.Radius = sphereCollider.radius;
             }
-            else if (collider is CapsuleCollider capsuleCollider)
+            else if (collider as CapsuleCollider != null)
             {
+                var capsuleCollider = (CapsuleCollider)collider;
                 var center = capsuleCollider.center;
                 parameters.CenterX = center.x;
                 parameters.CenterY = center.y;
@@ -60,8 +64,9 @@ namespace Unity.HLODSystem.Utils
                 parameters.Height = capsuleCollider.height;
                 parameters.Direction = capsuleCollider.direction;
             }
-            else if (collider is TerrainCollider terrainCollider)
+            else if (collider as TerrainCollider != null)
             {
+                var terrainCollider = (TerrainCollider)collider;
                 parameters.TerrainData = GUIDUtils.ObjectToGUID(terrainCollider.terrainData);
             }
             else

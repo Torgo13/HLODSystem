@@ -110,6 +110,7 @@ namespace Unity.HLODSystem.Cache
                 }
             }
         }
+        
         private Mesh? GetImpl(Type simplifierType, Mesh mesh, float quality)
         {
             string path = AssetDatabase.GetAssetPath(mesh);
@@ -123,6 +124,7 @@ namespace Unity.HLODSystem.Cache
             return GetMesh(simplifierType, mesh, quality, guid, time.ToFileTimeUtc());
         }
 
+        static
         private Mesh? GetMesh(Type simplifiedType, Mesh source, float quality, string guid, long time)
         {
             SimplifiedMeshList meshList = GetMeshList(guid, time);
@@ -138,6 +140,7 @@ namespace Unity.HLODSystem.Cache
             }
         }
 
+        static
         private SimplifiedMeshList GetMeshList(string guid, long time)
         {
             var meshList = LoadMeshList(guid);
@@ -150,6 +153,7 @@ namespace Unity.HLODSystem.Cache
             return meshList;
         }
 
+        static
         private SimplifiedMeshList NewMeshList(string guid, long time)
         {
             SimplifiedMeshList meshList = SimplifiedMeshList.CreateInstance<SimplifiedMeshList>();
@@ -166,6 +170,8 @@ namespace Unity.HLODSystem.Cache
             AssetDatabase.CreateAsset(meshList, path);
             return meshList;
         }
+        
+        static
         private SimplifiedMeshList? LoadMeshList(string guid)
         {
             string path = GetAssetPath(guid);

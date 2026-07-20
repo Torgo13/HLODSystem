@@ -173,11 +173,7 @@ namespace Unity.HLODSystem
                 return ret;
             }
 
-            Bounds bounds = Utils.BoundsUtils.CalcLocalBounds(renderers[0], transform);
-            for (int i = 1; i < renderers.Length; ++i)
-            {
-                bounds.Encapsulate(Utils.BoundsUtils.CalcLocalBounds(renderers[i], transform));
-            }
+            Bounds bounds = BoundsUtils.CalcLocalBounds(renderers, transform);
 
             ret.center = bounds.center;
             float max = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);

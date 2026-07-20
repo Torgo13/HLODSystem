@@ -152,10 +152,10 @@ namespace Unity.HLODSystem
 
         static void ChangeLayersRecursively(Transform trans, int layer)
         {
-            trans.gameObject.layer = layer;
-            foreach (Transform child in trans)
+            Transform[] transforms = trans.GetComponentsInChildren<Transform>(includeInactive: true);
+            foreach (Transform child in transforms)
             {
-                ChangeLayersRecursively(child, layer);
+                child.gameObject.layer = layer;
             }
         }
 #endif

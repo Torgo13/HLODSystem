@@ -88,12 +88,12 @@ namespace Unity.HLODSystem
             }
             public TexturePacker.MaterialTexture? GetMaterialTextures(WorkingMaterial material)
             {
-                if (m_textureCache.ContainsKey(material.Guid) == false)
+                if (!m_textureCache.TryGetValue(material.Guid, out var textures))
                 {
+                    textures =
                     AddToCache(material);
                 }
 
-                var textures = m_textureCache[material.Guid];
                 if (textures != null)
                 {
                     string inputName = m_textureInfoList[0].InputName;
@@ -111,7 +111,7 @@ namespace Unity.HLODSystem
                 
             }
 
-            private void AddToCache(WorkingMaterial material)
+            private TexturePacker.MaterialTexture AddToCache(WorkingMaterial material)
             {
                 string inputName = m_textureInfoList[0].InputName;
                 WorkingTexture? texture = material.GetTexture(inputName);
@@ -152,6 +152,8 @@ namespace Unity.HLODSystem
                 }
 
                 m_textureCache.Add(material.Guid, materialTexture);
+
+                return materialTexture;
             }
             
             static
@@ -285,13 +287,15 @@ namespace Unity.HLODSystem
             List<TextureInfo> textureInfoList = options.TextureInfoList;
             var combineInfos = new List<MeshCombiner.CombineInfo>();
             var hlodWorldToLocal = rootTransform.worldToLocalMatrix;
+            List<bool> updated = new List<bool>(128);
 
             for (int i = 0; i < info.WorkingObjects.Count; ++i)
             {
                 var obj = info.WorkingObjects[i];
                 if (obj.Mesh == null)
                     continue;
-                ConvertMesh(obj.Mesh, obj.Materials, atlas, textureInfoList[0].InputName);
+                ConvertMesh(obj.Mesh, obj.Materials, atlas, textureInfoList[0].InputName,
+                    updated);
                 var matrix = hlodWorldToLocal * obj.LocalToWorld;
                 for (int si = 0; si < obj.Mesh.subMeshCount; ++si)
                 {
@@ -327,11 +331,11 @@ namespace Unity.HLODSystem
         }
 
         static
-        private void ConvertMesh(WorkingMesh mesh, DisposableBag<WorkingMaterial> materials, TexturePacker.TextureAtlas atlas, string mainTextureName)
+        private void ConvertMesh(WorkingMesh mesh, DisposableBag<WorkingMaterial> materials, TexturePacker.TextureAtlas atlas, string mainTextureName,
+            List<bool> updated)
         {
             var uv = mesh.UV;
-            Span<bool> updated = stackalloc bool[uv.Length];
-            updated.Clear();
+            updated.EnsureCount(uv.Length);
             // Some meshes have submeshes that either aren't expected to render or are missing a material, so go ahead and skip
             int subMeshCount = Mathf.Min(mesh.subMeshCount, materials.Count);
             int mi = -1;

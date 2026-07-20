@@ -44,11 +44,8 @@ namespace Unity.HLODSystem.Utils
             bool isFinish = false;
             while (isFinish == false)
             {
-                while (true)
+                while (m_mainThreadJobs.TryDequeue(out Action? mainThreadJob))
                 {
-                    Action? mainThreadJob = DequeueMainThreadJob();
-                    if (mainThreadJob == null)
-                        break;
                     mainThreadJob.Invoke();
                 }
 
@@ -61,10 +58,13 @@ namespace Unity.HLODSystem.Utils
                 isFinish = true;
                 for (int i = 0; i < m_workers.Length; ++i)
                 {
+#if OPTIMISATION
+#else
                     if ( m_workers[i].IsException())
                     {
                         throw new Exception("Exception from worker thread.");
                     }
+#endif // OPTIMISATION
                     if (m_workers[i].IsWorking() == true)
                     {
                         isFinish = false;
@@ -85,6 +85,7 @@ namespace Unity.HLODSystem.Utils
                 m_workers[i].Stop();
             }
 #if OPTIMISATION_NULL
+            m_workers = Array.Empty<Worker>();
 #else
             m_workers = null;
 #endif // OPTIMISATION_NULL

@@ -485,8 +485,9 @@ namespace Unity.HLODSystem
                 var combiners = new DisposableList<TextureCombiner>();
 
                 //Second, we should figure out which group should be combined from each taskGroup.
-                foreach (var taskGroup in taskGroups.Values)
+                foreach (var taskGroupKVPair in taskGroups)
                 {
+                    var taskGroup = taskGroupKVPair.Value;
                     taskGroup.CombineSources(scoreList);
                     m_atlas.AddRange(taskGroup.CreateTextureAtlases(resizedTextures, combiners, atlases));
                 }

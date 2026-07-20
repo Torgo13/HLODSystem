@@ -168,8 +168,9 @@ namespace Unity.HLODSystem
                         }
                     }
 
-                    foreach (var objects in createdGameObjects.Values)
+                    foreach (var objectsKVPair in createdGameObjects)
                     {
+                        var objects = objectsKVPair.Value;
                         GameObject root;
                         if (objects.Count > 1)
                         {
@@ -220,6 +221,7 @@ namespace Unity.HLODSystem
             return data.CompressionData.PCTextureFormat;
         }
 
+        [System.Diagnostics.Conditional("ZERO")]
         static
         private void UpdateProgress(string filename, int current, int max)
         {

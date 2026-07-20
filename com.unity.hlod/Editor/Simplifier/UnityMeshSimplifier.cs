@@ -70,13 +70,11 @@ namespace Unity.HLODSystem.Simplifier
             int triCount = 0;
             for (int i = 0; i < meshSimplifier.SubMeshCount; ++i)
             {
-                var subMeshIndices = meshSimplifier.GetSubMeshTriangles(i);
-                triCount += subMeshIndices.Length;
-                subMeshIndices.Dispose();
+                triCount += meshSimplifier.GetSubMeshTrianglesLength(i);
             }
 
 #if OPTIMISATION
-            using var vertices = meshSimplifier.VerticesSpan;
+            using var vertices = meshSimplifier.VerticesNative;
             Utils.WorkingMesh nwm = new WorkingMesh(Allocator.Persistent,
                 vertices.AsReadOnlySpan(), meshSimplifier.NormalsSpan, meshSimplifier.TangentsSpan,
                 meshSimplifier.UVSpan, meshSimplifier.UV2Span, meshSimplifier.UV3Span, meshSimplifier.UV4Span,
@@ -105,11 +103,10 @@ namespace Unity.HLODSystem.Simplifier
             nwm.colors = meshSimplifier.Colors;
 #endif // OPTIMISATION
             nwm.subMeshCount = meshSimplifier.SubMeshCount;
+            var subMeshIndices = new System.Collections.Generic.List<int>();
             for (var submesh = 0; submesh < nwm.subMeshCount; submesh++)
             {
-                var subMeshIndices = meshSimplifier.GetSubMeshTriangles(submesh);
-                nwm.SetTriangles(subMeshIndices.AsReadOnlySpan(), submesh);
-                subMeshIndices.Dispose();
+                nwm.SetTriangles(meshSimplifier.GetSubMeshTriangles(submesh, subMeshIndices).AsReadOnlySpan(), submesh);
             }
 
             if (resultCallback != null)

@@ -228,7 +228,7 @@ namespace Unity.HLODSystem.SpaceManager
             List<TargetInfo> targetInfos)
         {
 #if BUGFIX
-            if (gameObjects == null)
+            if (gameObjects == default)
                 return targetInfos;
 #endif // BUGFIX
 
@@ -256,11 +256,7 @@ namespace Unity.HLODSystem.SpaceManager
             if (renderers.Count == 0)
                 return false;
 
-            result = Utils.BoundsUtils.CalcLocalBounds(renderers[0], transform);
-            for (int i = 1; i < renderers.Count; ++i)
-            {
-                result.Encapsulate(Utils.BoundsUtils.CalcLocalBounds(renderers[i], transform));
-            }
+            result = Utils.BoundsUtils.CalcLocalBounds(renderers.AsReadOnlySpan(), transform);
 
             return true;
         }
@@ -273,7 +269,7 @@ namespace Unity.HLODSystem.SpaceManager
             int zcount = Mathf.CeilToInt(boundsSize.z / splitSize);
 
             // Avoid allocating boundsList with too many elements
-            if (xcount * zcount > ushort.MaxValue)
+            if (xcount * zcount >= ushort.MaxValue)
                 return new List<Bounds>();
 
             float xsize = boundsSize.x / xcount;

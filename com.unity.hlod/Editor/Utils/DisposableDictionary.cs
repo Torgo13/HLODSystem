@@ -16,9 +16,9 @@ namespace Unity.HLODSystem.Utils
         // ReSharper disable Unity.PerformanceAnalysis
         public void Dispose()
         {
-            foreach (var value in m_dic.Values)
+            foreach (var value in m_dic)
             {
-                value.Dispose();
+                value.Value.Dispose();
             }
             m_dic.Clear();
         }

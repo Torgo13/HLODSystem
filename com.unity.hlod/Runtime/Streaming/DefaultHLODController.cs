@@ -47,10 +47,24 @@ namespace Unity.HLODSystem.Streaming
 
         public override void Install()
         {
+#if UNITY_6000_3_OR_NEWER
+            var gameObjects = new Collections.NativeArray<EntityId>(m_gameObjectList.Count,
+                Collections.Allocator.Temp,
+                Collections.NativeArrayOptions.UninitializedMemory);
+            
+            for (int i = 0; i < m_gameObjectList.Count; ++i)
+            {
+                gameObjects[i] = m_gameObjectList[i].GetEntityId();
+            }
+            
+            GameObject.SetGameObjectsActive(gameObjects, false);
+            gameObjects.Dispose();
+#else
             for (int i = 0; i < m_gameObjectList.Count; ++i)
             {
                 m_gameObjectList[i].SetActive(false);
             }
+#endif // UNITY_6000_3_OR_NEWER
         }
 
         public override void LoadHighObject(int id, Action<GameObject>? loadDoneCallback)

@@ -382,7 +382,7 @@ namespace Unity.HLODSystem
                 //If the controller was created in the old version, must manually delete it.
                 for (int i = 0; i < controllers.Count; ++i)
                 {
-#if OPTIMISATION_NULL
+#if OPTIMISATION_NULL // GetHLODControllerBases() checks that each HLODControllerBase is not null before adding it
 #else
                     if (controllers[i] == null)
                         continue;
