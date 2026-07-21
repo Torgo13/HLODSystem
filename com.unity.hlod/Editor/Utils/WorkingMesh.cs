@@ -798,7 +798,7 @@ namespace Unity.HLODSystem.Utils
 
                 var bytes = new NativeArray<byte>(Encoding.UTF8.GetByteCount(value),
                     Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-                Encoding.UTF8.GetBytes(value, bytes);
+                _ = Encoding.UTF8.GetBytes(value, bytes);
                 m_Name.Clear();
                 m_Name.AddRange(bytes);
                 bytes.Dispose();

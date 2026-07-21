@@ -107,7 +107,51 @@ namespace Unity.HLODSystem.Utils
             m_buffer.SetPixel(x, y, color);
 
         }
-   
+
+        /// <remarks>Background thread</remarks>
+        public void SetPixels(NativeArray<Color> colors, Color max, Color min)
+        {
+            MakeWriteable();
+
+            var pixels = m_buffer.Pixels;
+            ColorUtils.SetPixels(colors, ref pixels, max, min);
+        }
+
+        /// <remarks>Background thread</remarks>
+        public void SetPixels(NativeArray<Color32> colors, Color max, Color min)
+        {
+            MakeWriteable();
+
+            var pixels = m_buffer.Pixels;
+            ColorUtils.SetPixels(colors, ref pixels, max, min);
+        }
+
+        /// <remarks>Background thread</remarks>
+        public void SetPixels(NativeArray<Color24> colors, Color max, Color min)
+        {
+            MakeWriteable();
+
+            var pixels = m_buffer.Pixels;
+            ColorUtils.SetPixels(colors, ref pixels, max, min);
+        }
+
+        /// <remarks>Background thread</remarks>
+        public void SetPixelsARGB(NativeArray<Color32> colors, Color max, Color min)
+        {
+            MakeWriteable();
+
+            var pixels = m_buffer.Pixels;
+            ColorUtils.SetPixelsARGB(colors, ref pixels, max, min);
+        }
+
+        /// <remarks>Background thread</remarks>
+        public void SetPixelsBGRA(NativeArray<Color32> colors, Color max, Color min)
+        {
+            MakeWriteable();
+
+            var pixels = m_buffer.Pixels;
+            ColorUtils.SetPixelsBGRA(colors, ref pixels, max, min);
+        }
 
         public Color GetPixel(int x, int y)
         {

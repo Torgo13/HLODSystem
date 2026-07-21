@@ -128,5 +128,87 @@ namespace Unity.HLODSystem.Utils
             return newBounds;
         }
     }
+
+    public struct Color24
+    {
+        public byte r;
+        public byte g;
+        public byte b;
+
+        public static implicit operator Color(Color24 color24)
+            => new Color(color24.r / (float)byte.MaxValue, color24.g / (float)byte.MaxValue, color24.b / (float)byte.MaxValue);
+        public static implicit operator Color24(Color color)
+            => new Color24 { r = (byte)(color.r * byte.MaxValue), g = (byte)(color.g * byte.MaxValue), b = (byte)(color.b * byte.MaxValue) };
+        public static implicit operator Color32(Color24 color24)
+            => new Color32(color24.r, color24.g, color24.b, byte.MaxValue);
+        public static implicit operator Color24(Color32 color32)
+            => new Color24 { r = color32.r, g = color32.g, b = color32.b };
+    }
+
+    [Burst.BurstCompile]
+    public static class ColorUtils
+    {
+        [Burst.BurstCompile(FloatMode = Burst.FloatMode.Fast)]
+        public static void SetPixels(
+            [Burst.NoAlias] in Collections.NativeArray<Color> src,
+            [Burst.NoAlias] ref Collections.NativeArray<Color> dst,
+            in Color max, in Color min)
+        {
+            for (int i = src.Length - 1; i >= 0; i--)
+            {
+                dst[i] = src[i] * max + min;
+            }
+        }
+
+        [Burst.BurstCompile(FloatMode = Burst.FloatMode.Fast)]
+        public static void SetPixels(
+            [Burst.NoAlias] in Collections.NativeArray<Color32> src,
+            [Burst.NoAlias] ref Collections.NativeArray<Color> dst,
+            in Color max, in Color min)
+        {
+            for (int i = src.Length - 1; i >= 0; i--)
+            {
+                dst[i] = (Color)src[i] * max + min;
+            }
+        }
+
+        [Burst.BurstCompile(FloatMode = Burst.FloatMode.Fast)]
+        public static void SetPixels(
+            [Burst.NoAlias] in Collections.NativeArray<Color24> src,
+            [Burst.NoAlias] ref Collections.NativeArray<Color> dst,
+            in Color max, in Color min)
+        {
+            for (int i = src.Length - 1; i >= 0; i--)
+            {
+                dst[i] = (Color)src[i] * max + min;
+            }
+        }
+
+        [Burst.BurstCompile(FloatMode = Burst.FloatMode.Fast)]
+        public static void SetPixelsARGB(
+            [Burst.NoAlias] in Collections.NativeArray<Color32> src,
+            [Burst.NoAlias] ref Collections.NativeArray<Color> dst,
+            in Color max, in Color min)
+        {
+            for (int i = src.Length - 1; i >= 0; i--)
+            {
+                Color32 color = src[i];
+                dst[i] = new Color(color.g, color.b, color.a, color.r) * max + min;
+            }
+        }
+
+        [Burst.BurstCompile(FloatMode = Burst.FloatMode.Fast)]
+        public static void SetPixelsBGRA(
+            [Burst.NoAlias] in Collections.NativeArray<Color32> src,
+            [Burst.NoAlias] ref Collections.NativeArray<Color> dst,
+            in Color max, in Color min)
+        {
+            for (int i = src.Length - 1; i >= 0; i--)
+            {
+                Color32 color = src[i];
+                dst[i] = new Color(color.b, color.g, color.r, color.a) * max + min;
+            }
+        }
+    }
 #endif // UNITY_EDITOR
 }

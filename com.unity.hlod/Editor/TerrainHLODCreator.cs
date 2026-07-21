@@ -202,12 +202,44 @@ namespace Unity.HLODSystem
                         int width = textureWidth >> i;
                         int height = textureHeight >> i;
                         WorkingTexture workingTexture = new WorkingTexture(Allocator.Persistent, format, width, height, linear);
-                        Color[] colors = texture.GetPixels(i);
-                        for (int y = 0; y < height; ++y)
+                        switch (format)
                         {
-                            for (int x = 0; x < width; ++x)
+                            case TextureFormat.RGBA32:
                             {
-                                workingTexture.SetPixel(x, y, colors[y * width + x] * max + min);
+                                workingTexture.SetPixels(texture.GetPixelData<Color32>(i), max, min);
+                                break;
+                            }
+                            case TextureFormat.ARGB32:
+                            {
+                                workingTexture.SetPixelsARGB(texture.GetPixelData<Color32>(i), max, min);
+                                break;
+                            }
+                            case TextureFormat.BGRA32:
+                            {
+                                workingTexture.SetPixelsBGRA(texture.GetPixelData<Color32>(i), max, min);
+                                break;
+                            }
+                            case TextureFormat.RGB24:
+                            {
+                                workingTexture.SetPixels(texture.GetPixelData<Color24>(i), max, min);
+                                break;
+                            }
+                            case TextureFormat.RGBAFloat:
+                            {
+                                workingTexture.SetPixels(texture.GetPixelData<Color>(i), max, min);
+                                break;
+                            }
+                            default:
+                            {
+                                Color[] colors = texture.GetPixels(i);
+                                for (int y = 0; y < height; ++y)
+                                {
+                                    for (int x = 0; x < width; ++x)
+                                    {
+                                        workingTexture.SetPixel(x, y, colors[y * width + x] * max + min);
+                                    }
+                                }
+                                break;
                             }
                         }
 
@@ -928,8 +960,9 @@ namespace Unity.HLODSystem
 
             for (int si = 0; si < source.subMeshCount; ++si)
             {
-                var tris = new List<int>(source.GetTrianglesNative(si));
-                _ = GetEdgeList(tris.AsReadOnlySpan(), edges);
+                var trisNative = source.GetTrianglesNative(si);
+                var tris = new List<int>(trisNative);
+                _ = GetEdgeList(trisNative.AsReadOnlySpan(), edges);
                 vertexIndces.Clear();
 
                 foreach (var edge in edges)
