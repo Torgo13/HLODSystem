@@ -112,7 +112,7 @@ namespace Unity.HLODSystem.Streaming
                 }
                 else if (m_highObjects[i].GameObject != null)
                 {
-                    m_highObjects[i].GameObject!.SetActive(false);
+                    m_highObjects[i].GameObject.SetActive(false);
                 }
             }
 #endif // UNITY_6000_3_OR_NEWER
@@ -239,13 +239,13 @@ namespace Unity.HLODSystem.Streaming
         }
 
         private static void DestroyObject(ChildObject childObject)
-            => DestoryObject(childObject.GameObject);
+            => DestoryObject(childObject.GameObject!);
 
         private static void DestroyObject(LoadInfo loadInfo)
-            => DestoryObject(loadInfo.Instance);
+            => DestoryObject(loadInfo.Instance!);
 
         static
-        private void DestoryObject(Object? obj)
+        private void DestoryObject(Object obj)
         {
 #if UNITY_EDITOR
             if (!Application.isPlaying)
@@ -266,7 +266,11 @@ namespace Unity.HLODSystem.Streaming
 #if UNITY_6000_3_OR_NEWER
             void loadDoneAction(GameObject obj)
             {
+#if OPTIMISATION // Already Instantiated
+                GameObject gameObject = obj;
+#else
                 GameObject gameObject = Instantiate(obj, parent, false);
+#endif // OPTIMISATION
                 var transformHandle = gameObject.transformHandle;
                 transformHandle.SetLocalPositionAndRotation(localPosition, localRotation);
                 transformHandle.localScale = localScale;

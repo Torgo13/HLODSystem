@@ -257,10 +257,7 @@ namespace Unity.HLODSystem
 
             for (int i = 0; i < indices.Length; ++i)
             {
-                if (remapper.ContainsKey(indices[i]))
-                    continue;
-                
-                remapper.Add(indices[i], remapper.Count);
+                _ = remapper.TryAdd(indices[i], remapper.Count);
             }
 
             return remapper;

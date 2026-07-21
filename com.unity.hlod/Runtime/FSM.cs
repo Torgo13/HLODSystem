@@ -123,10 +123,13 @@ namespace Unity.HLODSystem
         
         private Functions GetFunctions(T state)
         {
-            if ( m_functions.ContainsKey(state) == false )
-                m_functions.Add(state, new Functions());
+            if (!m_functions.TryGetValue(state, out Functions functions))
+            {
+                functions = new Functions();
+                m_functions.Add(state, functions);
+            }
 
-            return m_functions[state];
+            return functions;
         }
 
         private void StartTransaction(T current, T target)

@@ -27,7 +27,7 @@ namespace Unity.HLODSystem.Utils
             ReadOnlySpan<Matrix4x4> bindposes)
         {
             wm.indexFormat = mesh.indexFormat;
-#if !OPTIMISATION
+#if OPTIMISATION
             var vertices = UnityEngine.Pool.ListPool<Vector3>.Get();
             var normals = UnityEngine.Pool.ListPool<Vector3>.Get();
             var tangents = UnityEngine.Pool.ListPool<Vector4>.Get();
@@ -1962,7 +1962,7 @@ namespace Unity.HLODSystem.Utils
             if (m_Triangles.IsCreated)
                 m_Triangles.Dispose();
 
-            if (m_detector.IsCreated)
+            if (!m_detector.IsCreated)
                 return;
             
             m_detector.Dispose();

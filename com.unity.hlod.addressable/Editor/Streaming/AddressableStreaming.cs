@@ -363,19 +363,17 @@ namespace Unity.HLODSystem.Streaming
 
                     if (PrefabUtility.IsPartOfAnyPrefab(obj) == false)
                     {
-
-
                         GameObject? rootGameObject = null;
                         
-                        if ( rootDatas.ContainsKey(i))
-                            rootGameObject = rootDatas[i].GetRootObject(obj.name);
+                        if (rootDatas.TryGetValue(i, out RootData rootData))
+                            rootGameObject = rootData.GetRootObject(obj.name);
 
                         if (rootGameObject != null)
                         {
                             var objTransform = obj.transform;
                             GameObject go = (GameObject)PrefabUtility.InstantiatePrefab(rootGameObject, objTransform.parent);
-                            objTransform.GetLocalPositionAndRotation(out var pos, out var rot);
                             var t = go.transform;
+                            objTransform.GetLocalPositionAndRotation(out var pos, out var rot);
                             t.SetLocalPositionAndRotation(pos, rot);
                             t.localScale = objTransform.localScale;
 
@@ -448,10 +446,7 @@ namespace Unity.HLODSystem.Streaming
                 var hlodMaterials = hlodData.GetMaterials();
                 for (int mi = 0; mi < hlodMaterials.Count; ++mi)
                 {
-                    if (hlodAllMaterials.ContainsKey(hlodMaterials[mi].ID) == false)
-                    {
-                        hlodAllMaterials.Add(hlodMaterials[mi].ID, hlodMaterials[mi]);
-                    }
+                    _ = hlodAllMaterials.TryAdd(hlodMaterials[mi].ID, hlodMaterials[mi]);
                 }
             }
 
@@ -518,10 +513,10 @@ namespace Unity.HLODSystem.Streaming
                 var materials = hlodData.GetMaterials();
                 for ( int i = 0; i < materials.Count; ++i )
                 {
-                    if (extractedMaterials.ContainsKey(materials[i].ID) == false)
+                    if (!extractedMaterials.TryGetValue(materials[i].ID, out var extractedMaterial))
                         continue;
 
-                    materials[i] = extractedMaterials[materials[i].ID];
+                    materials[i] = extractedMaterial;
                 }
 
                 var objects = hlodData.GetObjects();
@@ -531,10 +526,10 @@ namespace Unity.HLODSystem.Streaming
 
                     for (int mi = 0; mi < matIds.Count; ++mi)
                     {
-                        if (extractedMaterials.ContainsKey(matIds[mi]) == false)
+                        if (!extractedMaterials.TryGetValue(matIds[mi], out var extractedMaterial))
                             continue;
 
-                        matIds[mi] = extractedMaterials[matIds[mi]].ID;
+                        matIds[mi] = extractedMaterial.ID;
                     }
                 }
 

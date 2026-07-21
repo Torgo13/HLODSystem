@@ -202,7 +202,7 @@ namespace Unity.HLODSystem.Utils
 
         public static int ShaderProperty(string name)
         {
-            if (!shaderProperties.TryGetValue(name, out var value))
+            if (!shaderProperties.TryGetValue(name, out int value))
             {
                 value = Shader.PropertyToID(name);
                 shaderProperties[name] = value;
@@ -347,7 +347,10 @@ namespace Unity.HLODSystem.Utils
 
         public string[] GetTextureNames()
         {
+#if BUGFIX
+#else
             lock (m_textures)
+#endif // BUGFIX
             {
                 return m_textures.Keys.ToArray();
             }
@@ -357,15 +360,18 @@ namespace Unity.HLODSystem.Utils
         {
             lock (m_textures)
             {
-                if (m_textures.ContainsKey(name) == true && m_textures[name] != null )
-                    m_textures[name].Dispose();
+                if (m_textures.TryGetValue(name, out WorkingTexture value))
+                    value.Dispose();
                         
                 m_textures[name] = texture;
             }
         }
         public WorkingTexture? GetTexture(string name)
         {
+#if BUGFIX
+#else
             lock (m_textures)
+#endif // BUGFIX
             {
                 WorkingTexture ret;
                 if (m_textures.TryGetValue(name, out ret))

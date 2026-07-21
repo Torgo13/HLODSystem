@@ -102,9 +102,9 @@ namespace Unity.HLODSystem
                             for (int mi = 0; mi < materialIds.Count; ++mi)
                             {
                                 string id = materialIds[mi];
-                                if (loadedMaterials.ContainsKey(id))
+                                if (loadedMaterials.TryGetValue(id, out var loadedMaterial))
                                 {
-                                    materials.Add(loadedMaterials[id]);
+                                    materials.Add(loadedMaterial);
                                 }
                                 else 
                                 {
@@ -132,10 +132,13 @@ namespace Unity.HLODSystem
                             ctx.AddObjectToAsset(mesh.name, mesh);
 
                             string goName = go.name;
-                            if (!createdGameObjects.ContainsKey(goName))
-                                createdGameObjects.Add(goName, new List<GameObject>());
+                            if (!createdGameObjects.TryGetValue(goName, out var created))
+                            {
+                                created = new List<GameObject>();
+                                createdGameObjects.Add(goName, created);
+                            }
 
-                            createdGameObjects[goName].Add(go);
+                            created.Add(go);
                         }
                     }
 
@@ -151,13 +154,11 @@ namespace Unity.HLODSystem
 
                             var sc = serializableColliders[ci];
                             GameObject go;
-
-                            if (createdColliders.ContainsKey(sc.Name) == false)
+                            if (!createdColliders.TryGetValue(sc.Name, out go))
                             {
-                                createdColliders[sc.Name] = new GameObject("Collider");
+                                go = new GameObject("Collider");
+                                createdColliders[sc.Name] = go;
                             }
-
-                            go = createdColliders[sc.Name];
 
                             var collider = sc.CreateGameObject();
                             if (collider != null)
@@ -176,10 +177,11 @@ namespace Unity.HLODSystem
                         {
                             root = new GameObject();
                             root.name = objects[0].name;
+                            Transform rootTransform = root.transform;
                             for (int i = 0; i < objects.Count; ++i)
                             {
                                 objects[i].name = objects[i].name + "_" + i;
-                                objects[i].transform.SetParent(root.transform, true);
+                                objects[i].transform.SetParent(rootTransform, true);
                             }
                         }
                         else
@@ -188,9 +190,9 @@ namespace Unity.HLODSystem
                         }
 
                         string rootName = root.name;
-                        if (createdColliders.ContainsKey(rootName))
+                        if (createdColliders.TryGetValue(rootName, out var createdCollider))
                         {
-                            createdColliders[rootName].transform.SetParent(root.transform, true);
+                            createdCollider.transform.SetParent(root.transform, true);
                         }
                         
                         rootData.SetRootObject(rootName, root);

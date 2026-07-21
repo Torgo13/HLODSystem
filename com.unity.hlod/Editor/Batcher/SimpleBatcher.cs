@@ -94,7 +94,7 @@ namespace Unity.HLODSystem
                     AddToCache(material);
                 }
 
-                if (textures != null)
+                if (textures.Count != 0)
                 {
                     string inputName = m_textureInfoList[0].InputName;
                     material.SetTexture(inputName, textures[0].Clone());
@@ -204,13 +204,10 @@ namespace Unity.HLODSystem
                         foreach (var m in workingObjects[oi].Materials)
                         {
                             var materialTextures = cache.GetMaterialTextures(m);
-                            if (materialTextures == null)
+                            if (materialTextures == null || materialTextures.Count == 0)
                                 continue;
 
-                            if (textures.ContainsKey(materialTextures[0].GetGUID()) == true)
-                                continue;
-
-                            textures.Add(materialTextures[0].GetGUID(), materialTextures);
+                            _ = textures.TryAdd(materialTextures[0].GetGUID(), materialTextures);
                         }
                     }
 
@@ -285,7 +282,7 @@ namespace Unity.HLODSystem
                 return;
 
             List<TextureInfo> textureInfoList = options.TextureInfoList;
-            var combineInfos = new List<MeshCombiner.CombineInfo>();
+            List<MeshCombiner.CombineInfo> combineInfos = new List<MeshCombiner.CombineInfo>();
             var hlodWorldToLocal = rootTransform.worldToLocalMatrix;
             List<bool> updated = new List<bool>(128);
 

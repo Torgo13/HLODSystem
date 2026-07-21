@@ -68,13 +68,14 @@ namespace Unity.HLODSystem
                     combineInfo.Mesh = mesh;
                     combineInfo.MeshIndex = m;
 
-                    if (combineInfos.ContainsKey(mat.Identifier) == false)
+                    if (!combineInfos.TryGetValue(mat.Identifier, out var identifier))
                     {
-                        combineInfos.Add(mat.Identifier, new List<MeshCombiner.CombineInfo>());
+                        identifier = new List<MeshCombiner.CombineInfo>();
+                        combineInfos.Add(mat.Identifier, identifier);
                         materialTable.Add(mat.Identifier, mat);
                     }
                     
-                    combineInfos[mat.Identifier].Add(combineInfo);
+                    identifier.Add(combineInfo);
                 }
             }
 
